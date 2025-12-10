@@ -100,7 +100,7 @@ export const Landing = () => {
                     {/* Badge */}
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm mb-8 animate-fade-in">
                         <Star className="w-4 h-4 text-amber-400" />
-                        <span className="text-sm text-muted-foreground">Trusted by 500+ companies worldwide</span>
+                        <span className="text-sm text-muted-foreground">Trusted by developers worldwide</span>
                     </div>
 
                     {/* Headline */}
