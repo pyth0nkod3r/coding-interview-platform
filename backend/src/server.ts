@@ -32,6 +32,16 @@ fastify.get('/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString() };
 });
 
+// Root route
+fastify.get('/', async () => {
+    return {
+        name: 'Coding Interview Platform API',
+        version: '1.0.0',
+        docs: '/api/v1',
+        health: '/health',
+    };
+});
+
 // Start server
 const start = async () => {
     try {
