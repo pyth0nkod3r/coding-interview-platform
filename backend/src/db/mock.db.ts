@@ -53,7 +53,15 @@ class MockDatabase {
         const session = this.sessions.get(id);
         if (!session) return undefined;
 
-        const updated = { ...session, ...updates };
+        // Filter out undefined values to prevent overwriting with undefined
+        const cleanUpdates: Partial<InterviewSession> = {};
+        for (const [key, value] of Object.entries(updates)) {
+            if (value !== undefined) {
+                (cleanUpdates as Record<string, unknown>)[key] = value;
+            }
+        }
+
+        const updated = { ...session, ...cleanUpdates };
         this.sessions.set(id, updated);
         return updated;
     }

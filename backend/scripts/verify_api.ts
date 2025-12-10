@@ -185,7 +185,16 @@ async function testUpdateSession(): Promise<void> {
 
 async function testToggleTyping(): Promise<void> {
     await test('POST /sessions/:id/permissions/typing - Toggle typing', async () => {
+        // Debug: Get session first to check interviewerId
+        const sessionRes = await request(`/sessions/${sessionId}`);
+        const session = await sessionRes.json();
+
         const res = await request(`/sessions/${sessionId}/permissions/typing`, { method: 'POST' });
+        if (!res.ok) {
+            const errorBody = await res.json();
+            console.log(`  Debug: userId=${userId}, sessionId=${sessionId}, interviewerId=${session.interviewerId}`);
+            console.log(`  Error body:`, errorBody);
+        }
         assert(res.ok, `Expected 200, got ${res.status}`);
         const data = await res.json();
         assert(typeof data.canCandidateType === 'boolean', 'Expected boolean');
