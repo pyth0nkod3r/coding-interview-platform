@@ -1,9 +1,11 @@
 // src/server.ts
-// Fastify server setup
+// Fastify server setup with Swagger UI
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { authRoutes } from './routes/auth.routes.js';
 import { sessionsRoutes } from './routes/sessions.routes.js';
 import { codeRoutes } from './routes/code.routes.js';
@@ -22,6 +24,37 @@ await fastify.register(jwt, {
     secret: process.env.JWT_SECRET || 'super-secret-key-change-in-production',
 });
 
+// Swagger configuration
+await fastify.register(swagger, {
+    openapi: {
+        info: {
+            title: 'Coding Interview Platform API',
+            description: 'Backend API for the Coding Interview Platform',
+            version: '1.0.0',
+        },
+        servers: [
+            { url: 'http://localhost:3001', description: 'Development server' },
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                },
+            },
+        },
+    },
+});
+
+await fastify.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+        docExpansion: 'list',
+        deepLinking: true,
+    },
+});
+
 // Register routes
 await fastify.register(authRoutes, { prefix: '/api/v1/auth' });
 await fastify.register(sessionsRoutes, { prefix: '/api/v1/sessions' });
@@ -35,7 +68,7 @@ fastify.get('/api/v1', async () => {
             sessions: '/api/v1/sessions',
             code: '/api/v1/code',
         },
-        docs: 'See /openapi.yaml for full specification',
+        docs: '/docs',
     };
 });
 
@@ -49,7 +82,8 @@ fastify.get('/', async () => {
     return {
         name: 'Coding Interview Platform API',
         version: '1.0.0',
-        docs: '/api/v1',
+        docs: '/docs',
+        api: '/api/v1',
         health: '/health',
     };
 });
@@ -60,6 +94,7 @@ const start = async () => {
         const port = parseInt(process.env.PORT || '3001', 10);
         await fastify.listen({ port, host: '0.0.0.0' });
         console.log(`🚀 Server running at http://localhost:${port}`);
+        console.log(`📚 API docs: http://localhost:${port}/docs`);
         console.log(`📚 API base: http://localhost:${port}/api/v1`);
     } catch (err) {
         fastify.log.error(err);
