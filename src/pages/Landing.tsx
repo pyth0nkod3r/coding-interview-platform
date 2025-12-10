@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import {
     Code2, Users, Zap, Shield, Play, ArrowRight, Check,
-    Monitor, MessageSquare, Clock, Star
+    MessageSquare, Clock, Star
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 
@@ -133,9 +133,9 @@ export const Landing = () => {
                         </Button>
                         <Button
                             size="lg"
-                            variant="outline"
+                            variant="secondary"
                             className="border-white/20 hover:bg-white/5 text-lg px-8 py-6 transition-all duration-300 hover:border-white/40"
-                            onClick={() => navigate('/login')}
+                            onClick={() => navigate('/demo')}
                         >
                             <Play className="w-5 h-5 mr-2" />
                             Watch Demo

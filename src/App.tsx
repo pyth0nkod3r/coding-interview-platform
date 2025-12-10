@@ -5,6 +5,7 @@ import { Signup } from './pages/Signup';
 import { Dashboard } from './pages/Dashboard';
 import { InterviewRoom } from './pages/InterviewRoom';
 import { Landing } from './pages/Landing';
+import { Demo } from './pages/Demo';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthService } from './services/auth.service';
 
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <Landing />,
+      },
+      {
+        path: 'demo',
+        element: <Demo />,
       },
       {
         path: 'login',
