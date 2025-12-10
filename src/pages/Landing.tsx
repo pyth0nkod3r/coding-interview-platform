@@ -59,14 +59,14 @@ export const Landing = () => {
         <div className="min-h-screen bg-background overflow-hidden">
             {/* Animated Background */}
             <div className="fixed inset-0 -z-10">
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-950/50 via-background to-cyan-950/30" />
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl animate-pulse" />
-                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-                <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-900/40 via-slate-900 to-cyan-900/30" />
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/30 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+                <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
             </div>
 
             {/* Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 backdrop-blur-xl bg-background/60">
+            <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/20 backdrop-blur-xl bg-slate-900/70">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
@@ -98,7 +98,7 @@ export const Landing = () => {
             <section className="pt-32 pb-20 px-6">
                 <div className="max-w-7xl mx-auto text-center">
                     {/* Badge */}
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8 animate-fade-in">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm mb-8 animate-fade-in">
                         <Star className="w-4 h-4 text-amber-400" />
                         <span className="text-sm text-muted-foreground">Trusted by 500+ companies worldwide</span>
                     </div>
@@ -144,8 +144,8 @@ export const Landing = () => {
 
                     {/* Hero Image / Preview */}
                     <div className="relative max-w-5xl mx-auto">
-                        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 via-cyan-500/20 to-pink-500/20 blur-3xl -z-10 rounded-3xl" />
-                        <div className="rounded-2xl border border-white/10 bg-card/50 backdrop-blur-xl overflow-hidden shadow-2xl">
+                        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/30 via-cyan-500/30 to-pink-500/30 blur-3xl -z-10 rounded-3xl" />
+                        <div className="rounded-2xl border border-white/20 bg-slate-800/60 backdrop-blur-xl overflow-hidden shadow-2xl shadow-violet-500/10">
                             {/* Mock Editor Header */}
                             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-black/30">
                                 <div className="flex gap-2">
@@ -251,7 +251,7 @@ export const Landing = () => {
                         {features.map((feature, i) => (
                             <div
                                 key={i}
-                                className="group relative p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl hover:shadow-violet-500/10"
+                                className="group relative p-6 rounded-2xl bg-slate-800/50 border border-white/20 backdrop-blur-sm hover:bg-slate-700/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl hover:shadow-violet-500/20 hover:border-white/30"
                             >
                                 <div className={cn(
                                     "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center mb-4 shadow-lg transition-transform group-hover:scale-110",
@@ -270,8 +270,8 @@ export const Landing = () => {
             {/* CTA Section */}
             <section className="py-24 px-6">
                 <div className="max-w-4xl mx-auto relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-600/20 via-cyan-600/20 to-pink-600/20 blur-3xl -z-10 rounded-3xl" />
-                    <div className="text-center p-12 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl">
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-600/30 via-cyan-600/30 to-pink-600/30 blur-3xl -z-10 rounded-3xl" />
+                    <div className="text-center p-12 rounded-3xl bg-slate-800/60 border border-white/20 backdrop-blur-xl">
                         <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
                             Ready to Transform Your Hiring?
                         </h2>
@@ -308,7 +308,7 @@ export const Landing = () => {
             </section>
 
             {/* Footer */}
-            <footer className="py-12 px-6 border-t border-white/10">
+            <footer className="py-12 px-6 border-t border-white/20 bg-slate-900/50">
                 <div className="max-w-7xl mx-auto">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-3">
