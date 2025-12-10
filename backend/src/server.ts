@@ -88,18 +88,31 @@ fastify.get('/', async () => {
     };
 });
 
-// Start server
+// Start server with port fallback
 const start = async () => {
-    try {
-        const port = parseInt(process.env.PORT || '3001', 10);
-        await fastify.listen({ port, host: '0.0.0.0' });
-        console.log(`🚀 Server running at http://localhost:${port}`);
-        console.log(`📚 API docs: http://localhost:${port}/docs`);
-        console.log(`📚 API base: http://localhost:${port}/api/v1`);
-    } catch (err) {
-        fastify.log.error(err);
-        process.exit(1);
+    const basePort = parseInt(process.env.PORT || '3001', 10);
+    const maxRetries = 10;
+
+    for (let i = 0; i < maxRetries; i++) {
+        const port = basePort + i;
+        try {
+            await fastify.listen({ port, host: '0.0.0.0' });
+            console.log(`🚀 Server running at http://localhost:${port}`);
+            console.log(`📚 API docs: http://localhost:${port}/docs`);
+            console.log(`📚 API base: http://localhost:${port}/api/v1`);
+            return;
+        } catch (err: unknown) {
+            if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+                console.log(`⚠️  Port ${port} in use, trying ${port + 1}...`);
+                continue;
+            }
+            fastify.log.error(err);
+            process.exit(1);
+        }
     }
+
+    console.error(`❌ Could not find an available port after ${maxRetries} attempts`);
+    process.exit(1);
 };
 
 start();
