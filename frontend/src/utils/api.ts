@@ -31,9 +31,12 @@ class ApiClient {
         endpoint: string,
         body?: unknown
     ): Promise<T> {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-        };
+        const headers: Record<string, string> = {};
+
+        // Only set Content-Type if we have a body
+        if (body !== undefined) {
+            headers['Content-Type'] = 'application/json';
+        }
 
         const token = this.getToken();
         if (token) {
@@ -43,7 +46,7 @@ class ApiClient {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method,
             headers,
-            body: body ? JSON.stringify(body) : undefined,
+            body: body !== undefined ? JSON.stringify(body) : undefined,
         });
 
         // Handle 204 No Content

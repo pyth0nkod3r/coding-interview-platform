@@ -14,6 +14,7 @@ export const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [sessions, setSessions] = useState<InterviewSession[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [joinInterviewId, setJoinInterviewId] = useState('');
   const navigate = useNavigate();
@@ -35,11 +36,13 @@ export const Dashboard = () => {
   const handleCreateSession = async () => {
     if (!user) return;
     setIsCreating(true);
+    setCreateError('');
     try {
       const session = await InterviewService.createSession(user);
       navigate(`/interview/${session.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create session', error);
+      setCreateError(error.message || 'Failed to create session');
     } finally {
       setIsCreating(false);
     }
@@ -79,13 +82,16 @@ export const Dashboard = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-white">
+          <Button type="button" variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-white">
             <LogOut className="mr-2 h-4 w-4" /> Sign Out
           </Button>
           {user?.role === 'interviewer' && (
-            <Button onClick={handleCreateSession} isLoading={isCreating}>
-              <Plus className="mr-2 h-4 w-4" /> New Interview
-            </Button>
+            <>
+              <Button type="button" onClick={handleCreateSession} isLoading={isCreating}>
+                <Plus className="mr-2 h-4 w-4" /> New Interview
+              </Button>
+              {createError && <span className="text-red-400 text-sm">{createError}</span>}
+            </>
           )}
         </div>
       </header>
@@ -113,7 +119,7 @@ export const Dashboard = () => {
                   className="flex-1 sm:w-64"
                   onKeyDown={(e) => e.key === 'Enter' && handleJoinInterview()}
                 />
-                <Button onClick={handleJoinInterview} disabled={!joinInterviewId.trim()}>
+                <Button type="button" onClick={handleJoinInterview} disabled={!joinInterviewId.trim()}>
                   Join
                 </Button>
               </div>
@@ -146,7 +152,7 @@ export const Dashboard = () => {
               }
             </p>
             {user?.role === 'interviewer' && (
-              <Button onClick={handleCreateSession} isLoading={isCreating} variant="secondary">
+              <Button type="button" onClick={handleCreateSession} isLoading={isCreating} variant="secondary">
                 Create Session
               </Button>
             )}

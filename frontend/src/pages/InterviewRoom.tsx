@@ -31,6 +31,10 @@ export const InterviewRoom = () => {
   const [messageInput, setMessageInput] = useState('');
   const [newQuestionTitle, setNewQuestionTitle] = useState('');
   const [newQuestionContent, setNewQuestionContent] = useState('');
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [lastSeenMessageCount, setLastSeenMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Real-time sync debounce
@@ -47,37 +51,96 @@ export const InterviewRoom = () => {
 
     if (!id) return;
 
+    // Handle same-browser multi-tab scenario - refresh user on focus
+    const handleFocus = () => {
+      const latestUser = AuthService.getCurrentUser();
+      if (!latestUser) {
+        navigate('/login');
+        return;
+      }
+      // If user switched accounts, reload the page to get fresh state
+      if (latestUser.id !== currentUser.id) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
     // Load initial session from API
-    InterviewService.getSession(id).then(initialSession => {
-      if (initialSession) {
-        setSession(initialSession);
-        setCode(initialSession.codeState.code);
-      } else {
+    const loadSession = async () => {
+      try {
+        const initialSession = await InterviewService.getSession(id);
+        if (initialSession) {
+          // Auto-join for candidates who haven't joined yet
+          if (currentUser.role === 'candidate' && !initialSession.candidateId) {
+            try {
+              await InterviewService.joinSession(id);
+              // Refetch session after joining to get updated state
+              const updatedSession = await InterviewService.getSession(id);
+              if (updatedSession) {
+                setSession(updatedSession);
+                setCode(updatedSession.codeState.code);
+              }
+            } catch (joinError) {
+              console.error('Failed to join session:', joinError);
+              // Continue with original session - might already be joined
+              setSession(initialSession);
+              setCode(initialSession.codeState.code);
+            }
+          } else {
+            setSession(initialSession);
+            setCode(initialSession.codeState.code);
+          }
+        } else {
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        console.error('Failed to load session:', error);
         navigate('/dashboard');
       }
-    });
+    };
+    loadSession();
 
     // Subscribe to updates (polling-based)
     const unsubscribe = InterviewService.subscribeToSession(id, (updatedSession) => {
       if (updatedSession) {
         setSession(updatedSession);
-        // Update code from remote - for interviewer always, for candidate only if different
-        setCode((prev) => {
-          if (prev !== updatedSession.codeState.code) {
-            return updatedSession.codeState.code;
-          }
-          return prev;
-        });
+        // Only update code from remote for interviewers (who are viewing, not editing)
+        // Candidates are the ones editing, so don't overwrite their local changes
+        const isInterviewer = updatedSession.interviewerId === currentUser.id;
+        if (isInterviewer) {
+          setCode((prev) => {
+            if (prev !== updatedSession.codeState.code) {
+              return updatedSession.codeState.code;
+            }
+            return prev;
+          });
+        }
       }
     });
 
-    return unsubscribe;
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      unsubscribe();
+    };
   }, [id, navigate]);
 
   // Scroll to bottom of messages when new message arrives
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session?.sharedMessages]);
+
+  // Track unread messages when not viewing messages tab
+  useEffect(() => {
+    const messageCount = session?.sharedMessages?.length || 0;
+    if (activeTab === 'messages') {
+      // User is viewing messages, reset unread count
+      setUnreadMessages(0);
+      setLastSeenMessageCount(messageCount);
+    } else if (messageCount > lastSeenMessageCount) {
+      // New messages arrived while not viewing
+      setUnreadMessages(messageCount - lastSeenMessageCount);
+    }
+  }, [session?.sharedMessages, activeTab, lastSeenMessageCount]);
 
   // Sync Code Changes to "Server" (Storage) - Only for candidates
   useEffect(() => {
@@ -162,10 +225,15 @@ export const InterviewRoom = () => {
   };
 
   const handleAddQuestion = async () => {
-    if (!id || !newQuestionTitle.trim() || !newQuestionContent.trim()) return;
-    await InterviewService.addQuestion(id, newQuestionTitle.trim(), newQuestionContent.trim());
-    setNewQuestionTitle('');
-    setNewQuestionContent('');
+    if (!id || !newQuestionTitle.trim() || !newQuestionContent.trim() || isAddingQuestion) return;
+    setIsAddingQuestion(true);
+    try {
+      await InterviewService.addQuestion(id, newQuestionTitle.trim(), newQuestionContent.trim());
+      setNewQuestionTitle('');
+      setNewQuestionContent('');
+    } finally {
+      setIsAddingQuestion(false);
+    }
   };
 
   const handleRemoveQuestion = async (questionId: string) => {
@@ -174,10 +242,14 @@ export const InterviewRoom = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!id || !user || !messageInput.trim()) return;
-
-    await InterviewService.addMessage(id, messageInput.trim());
-    setMessageInput('');
+    if (!id || !user || !messageInput.trim() || isSendingMessage) return;
+    setIsSendingMessage(true);
+    try {
+      await InterviewService.addMessage(id, messageInput.trim());
+      setMessageInput('');
+    } finally {
+      setIsSendingMessage(false);
+    }
   };
 
   if (!session || !user) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
@@ -365,13 +437,18 @@ export const InterviewRoom = () => {
             <button
               onClick={() => setActiveTab('messages')}
               className={cn(
-                "flex-1 px-3 py-3 text-xs font-medium border-b-2 transition-colors flex items-center justify-center gap-1 relative",
+                "flex-1 px-3 py-3 text-xs font-medium border-b-2 transition-colors flex items-center justify-center gap-1",
                 activeTab === 'messages'
                   ? "border-primary text-primary bg-primary/5"
                   : "border-transparent text-muted-foreground hover:bg-white/5"
               )}
             >
               <MessageSquare className="w-4 h-4" /> Chat
+              {unreadMessages > 0 && activeTab !== 'messages' && (
+                <span className="ml-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('notes')}
@@ -430,7 +507,8 @@ export const InterviewRoom = () => {
                       />
                       <Button
                         onClick={handleAddQuestion}
-                        disabled={isEnded || !newQuestionTitle.trim() || !newQuestionContent.trim()}
+                        disabled={isEnded || !newQuestionTitle.trim() || !newQuestionContent.trim() || isAddingQuestion}
+                        isLoading={isAddingQuestion}
                         size="sm"
                         className="w-full"
                       >

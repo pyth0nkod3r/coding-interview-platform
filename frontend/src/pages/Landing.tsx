@@ -2,12 +2,14 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import {
     Code2, Users, Zap, Shield, Play, ArrowRight, Check,
-    MessageSquare, Clock, Star
+    MessageSquare, Clock, Star, LayoutDashboard
 } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { AuthService } from '../services/auth.service';
 
 export const Landing = () => {
     const navigate = useNavigate();
+    const isLoggedIn = AuthService.isAuthenticated();
 
     const features = [
         {
@@ -77,19 +79,31 @@ export const Landing = () => {
                         </span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
-                            className="text-muted-foreground hover:text-white transition-colors"
-                            onClick={() => navigate('/login')}
-                        >
-                            Sign In
-                        </Button>
-                        <Button
-                            className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-violet-500/30 hover:scale-105"
-                            onClick={() => navigate('/signup')}
-                        >
-                            Get Started Free
-                        </Button>
+                        {isLoggedIn ? (
+                            <Button
+                                className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-violet-500/30 hover:scale-105"
+                                onClick={() => navigate('/dashboard')}
+                            >
+                                <LayoutDashboard className="w-4 h-4 mr-2" />
+                                Dashboard
+                            </Button>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-white transition-colors"
+                                    onClick={() => navigate('/login')}
+                                >
+                                    Sign In
+                                </Button>
+                                <Button
+                                    className="bg-gradient-to-r from-violet-600 to-cyan-600 hover:from-violet-500 hover:to-cyan-500 shadow-lg shadow-violet-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-violet-500/30 hover:scale-105"
+                                    onClick={() => navigate('/signup')}
+                                >
+                                    Get Started Free
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
             </nav>
