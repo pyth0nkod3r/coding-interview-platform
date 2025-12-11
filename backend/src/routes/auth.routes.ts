@@ -39,20 +39,23 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         async (request: FastifyRequest<{ Body: SignupRequest }>, reply: FastifyReply) => {
             const { username, email, password, role } = request.body;
 
-            if (!username || !email || !password || !role) {
-                return reply.status(400).send({ message: 'Username, email, password, and role are required', code: 'BAD_REQUEST' });
+            if (!username || !email || !password) {
+                return reply.status(400).send({ message: 'Username, email, and password are required', code: 'BAD_REQUEST' });
             }
 
             if (password.length < 4) {
                 return reply.status(400).send({ message: 'Password must be at least 4 characters', code: 'BAD_REQUEST' });
             }
 
-            if (role !== 'interviewer' && role !== 'candidate') {
+            // Default to candidate if no role provided
+            const userRole = role || 'candidate';
+
+            if (userRole !== 'interviewer' && userRole !== 'candidate') {
                 return reply.status(400).send({ message: 'Role must be interviewer or candidate', code: 'BAD_REQUEST' });
             }
 
             try {
-                const user = AuthService.createUser(username, email, password, role);
+                const user = AuthService.createUser(username, email, password, userRole);
                 const token = fastify.jwt.sign({ id: user.id, username: user.username, role: user.role });
                 // Don't send password back to client
                 const { password: _, ...userWithoutPassword } = user;

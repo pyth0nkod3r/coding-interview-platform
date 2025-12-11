@@ -324,6 +324,7 @@ export const Landing = () => {
                             <a href="#" className="hover:text-white transition-colors">Privacy</a>
                             <a href="#" className="hover:text-white transition-colors">Terms</a>
                             <a href="#" className="hover:text-white transition-colors">Contact</a>
+                            <a href="/signup/interviewer" className="hover:text-violet-400 transition-colors">Interviewer Signup</a>
                         </div>
                     </div>
                 </div>
