@@ -13,8 +13,8 @@ describe('SessionService', () => {
 
     beforeEach(() => {
         db.clear();
-        interviewer = AuthService.createUser('interviewer1', 'interviewer@test.com', 'interviewer');
-        candidate = AuthService.createUser('candidate1', 'candidate@test.com', 'candidate');
+        interviewer = AuthService.createUser('interviewer1', 'interviewer@test.com', 'password123', 'interviewer');
+        candidate = AuthService.createUser('candidate1', 'candidate@test.com', 'password123', 'candidate');
     });
 
     describe('createSession', () => {
