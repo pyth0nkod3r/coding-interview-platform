@@ -47,16 +47,17 @@ export const InterviewRoom = () => {
 
     if (!id) return;
 
-    // Load initial session
-    const initialSession = InterviewService.getSession(id);
-    if (initialSession) {
-      setSession(initialSession);
-      setCode(initialSession.codeState.code);
-    } else {
-      navigate('/dashboard');
-    }
+    // Load initial session from API
+    InterviewService.getSession(id).then(initialSession => {
+      if (initialSession) {
+        setSession(initialSession);
+        setCode(initialSession.codeState.code);
+      } else {
+        navigate('/dashboard');
+      }
+    });
 
-    // Subscribe to updates (Cross-tab sync)
+    // Subscribe to updates (polling-based)
     const unsubscribe = InterviewService.subscribeToSession(id, (updatedSession) => {
       if (updatedSession) {
         setSession(updatedSession);
@@ -113,7 +114,7 @@ export const InterviewRoom = () => {
     }
   };
 
-  const toggleTypingPermission = () => {
+  const toggleTypingPermission = async () => {
     if (!session || !id) return;
     const newValue = !session.permissions.canCandidateType;
     // Optimistic update
@@ -121,10 +122,10 @@ export const InterviewRoom = () => {
       ...session,
       permissions: { ...session.permissions, canCandidateType: newValue }
     });
-    InterviewService.toggleCandidateTyping(id);
+    await InterviewService.toggleCandidateTyping(id);
   };
 
-  const toggleRunPermission = () => {
+  const toggleRunPermission = async () => {
     if (!session || !id) return;
     const newValue = !session.permissions.canCandidateRun;
     // Optimistic update
@@ -132,12 +133,12 @@ export const InterviewRoom = () => {
       ...session,
       permissions: { ...session.permissions, canCandidateRun: newValue }
     });
-    InterviewService.toggleCandidateRun(id);
+    await InterviewService.toggleCandidateRun(id);
   };
 
-  const changeLanguage = (lang: Language) => {
+  const changeLanguage = async (lang: Language) => {
     if (!session || !id) return;
-    InterviewService.updateSession(id, {
+    await InterviewService.updateSession(id, {
       codeState: { ...session.codeState, language: lang }
     });
     setSession({
@@ -153,35 +154,29 @@ export const InterviewRoom = () => {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     if (!id) return;
     if (confirm('Are you sure you want to end this interview session?')) {
-      InterviewService.endSession(id);
+      await InterviewService.endSession(id);
     }
   };
 
-  const handleAddQuestion = () => {
+  const handleAddQuestion = async () => {
     if (!id || !newQuestionTitle.trim() || !newQuestionContent.trim()) return;
-    InterviewService.addQuestion(id, newQuestionTitle.trim(), newQuestionContent.trim());
+    await InterviewService.addQuestion(id, newQuestionTitle.trim(), newQuestionContent.trim());
     setNewQuestionTitle('');
     setNewQuestionContent('');
   };
 
-  const handleRemoveQuestion = (questionId: string) => {
+  const handleRemoveQuestion = async (questionId: string) => {
     if (!id) return;
-    InterviewService.removeQuestion(id, questionId);
+    await InterviewService.removeQuestion(id, questionId);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!id || !user || !messageInput.trim()) return;
 
-    const isInterviewer = session?.interviewerId === user.id;
-    InterviewService.addMessage(id, {
-      senderId: user.id,
-      senderRole: isInterviewer ? 'interviewer' : 'candidate',
-      senderName: user.username,
-      content: messageInput.trim()
-    });
+    await InterviewService.addMessage(id, messageInput.trim());
     setMessageInput('');
   };
 
@@ -569,8 +564,8 @@ export const InterviewRoom = () => {
                   placeholder="Write your private notes here..."
                   defaultValue={session.privateNotes?.[user.id] || ''}
                   onChange={(e) => {
-                    if (id && user) {
-                      InterviewService.updateUserNotes(id, user.id, e.target.value);
+                    if (id) {
+                      InterviewService.updateUserNotes(id, e.target.value);
                     }
                   }}
                 />

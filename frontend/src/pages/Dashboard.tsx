@@ -25,7 +25,11 @@ export const Dashboard = () => {
       return;
     }
     setUser(currentUser);
-    setSessions(InterviewService.getAllSessions().reverse()); // Show newest first
+
+    // Fetch sessions from API
+    InterviewService.getAllSessions()
+      .then(sessions => setSessions(sessions.reverse()))
+      .catch(err => console.error('Failed to fetch sessions', err));
   }, [navigate]);
 
   const handleCreateSession = async () => {
@@ -41,8 +45,8 @@ export const Dashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    AuthService.logout();
+  const handleLogout = async () => {
+    await AuthService.logout();
     navigate('/login');
   };
 
@@ -136,7 +140,7 @@ export const Dashboard = () => {
             </div>
             <h3 className="text-xl font-semibold mb-2">No interviews yet</h3>
             <p className="text-muted-foreground mb-6">
-              {user?.role === 'interviewer' 
+              {user?.role === 'interviewer'
                 ? 'Create your first interview session to get started.'
                 : 'Use the join section above to enter an interview, or wait for your interviewer to share a link.'
               }

@@ -1,5 +1,7 @@
 // src/services/interview.service.ts
-import { StorageService } from './storage';
+// Interview session service using backend API
+
+import { api } from '../utils/api';
 import type { User } from './auth.service';
 
 export type Language = 'javascript' | 'python' | 'typescript';
@@ -27,6 +29,11 @@ export interface Question {
   createdAt: number;
 }
 
+export interface Permissions {
+  canCandidateRun: boolean;
+  canCandidateType: boolean;
+}
+
 export interface InterviewSession {
   id: string;
   interviewerId: string;
@@ -35,178 +42,177 @@ export interface InterviewSession {
   status: 'active' | 'ended';
   questions: Question[];
   codeState: CodeState;
-  permissions: {
-    canCandidateRun: boolean;
-    canCandidateType: boolean;
-  };
+  permissions: Permissions;
   privateNotes: { [userId: string]: string };
   sharedMessages: Message[];
 }
 
+export interface ExecutionResult {
+  output: string[];
+  error?: string | null;
+}
+
 export class InterviewService {
-  private static SESSIONS_KEY = 'sessions_db';
-  private static SESSION_PREFIX = 'session_';
+  // Polling interval for real-time updates (in ms)
+  private static POLL_INTERVAL = 1000;
+
+  // ============================================
+  // Session CRUD
+  // ============================================
 
   static async createSession(interviewer: User): Promise<InterviewSession> {
-    // Only interviewers can create sessions
     if (interviewer.role !== 'interviewer') {
       throw new Error('Only interviewers can create interview sessions');
     }
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const session: InterviewSession = {
-      id: Math.random().toString(36).substr(2, 9),
-      interviewerId: interviewer.id,
-      createdAt: Date.now(),
-      status: 'active',
-      questions: [],
-      codeState: {
-        code: '// Start coding here...',
-        language: 'javascript',
-      },
-      permissions: {
-        canCandidateRun: true,
-        canCandidateType: true,
-      },
-      privateNotes: {},
-      sharedMessages: []
-    };
-
-    // Save to "DB"
-    const sessions = StorageService.get<InterviewSession[]>(this.SESSIONS_KEY) || [];
-    sessions.push(session);
-    StorageService.set(this.SESSIONS_KEY, sessions);
-
-    // Save individual session state for real-time sync
-    StorageService.set(`${this.SESSION_PREFIX}${session.id}`, session);
-
-    return session;
+    return api.post<InterviewSession>('/sessions');
   }
 
-  static getSession(sessionId: string): InterviewSession | null {
-    return StorageService.get<InterviewSession>(`${this.SESSION_PREFIX}${sessionId}`);
-  }
-
-  static getAllSessions(): InterviewSession[] {
-    return StorageService.get<InterviewSession[]>(this.SESSIONS_KEY) || [];
-  }
-
-  static updateSession(sessionId: string, updates: Partial<InterviewSession>): void {
-    const current = this.getSession(sessionId);
-    if (!current) return;
-
-    const updated = { ...current, ...updates };
-    StorageService.set(`${this.SESSION_PREFIX}${sessionId}`, updated);
-
-    // Also update the main DB list for consistency (optional, but good for history)
-    const sessions = this.getAllSessions();
-    const index = sessions.findIndex(s => s.id === sessionId);
-    if (index !== -1) {
-      sessions[index] = updated;
-      StorageService.set(this.SESSIONS_KEY, sessions);
+  static async getSession(sessionId: string): Promise<InterviewSession | null> {
+    try {
+      return await api.get<InterviewSession>(`/sessions/${sessionId}`);
+    } catch {
+      return null;
     }
   }
 
-  // Update private notes for a specific user
-  static updateUserNotes(sessionId: string, userId: string, notes: string): void {
-    const current = this.getSession(sessionId);
-    if (!current) return;
-
-    const updatedNotes = { ...current.privateNotes, [userId]: notes };
-    this.updateSession(sessionId, { privateNotes: updatedNotes });
+  static async getAllSessions(): Promise<InterviewSession[]> {
+    return api.get<InterviewSession[]>('/sessions');
   }
 
-  // Get private notes for a specific user
-  static getUserNotes(sessionId: string, userId: string): string {
-    const session = this.getSession(sessionId);
-    return session?.privateNotes?.[userId] || '';
+  static async updateSession(
+    sessionId: string,
+    updates: { codeState?: CodeState; permissions?: Permissions }
+  ): Promise<InterviewSession | null> {
+    try {
+      return await api.patch<InterviewSession>(`/sessions/${sessionId}`, updates);
+    } catch {
+      return null;
+    }
   }
 
-  // End interview session
-  static endSession(sessionId: string): void {
-    this.updateSession(sessionId, { status: 'ended' });
+  static async joinSession(sessionId: string): Promise<InterviewSession> {
+    return api.post<InterviewSession>(`/sessions/${sessionId}/join`);
   }
 
-  // Add a question (interviewer only)
-  static addQuestion(sessionId: string, title: string, content: string): void {
-    const current = this.getSession(sessionId);
-    if (!current) return;
-
-    const newQuestion: Question = {
-      id: Math.random().toString(36).substr(2, 9),
-      title,
-      content,
-      createdAt: Date.now()
-    };
-
-    const questions = current.questions || [];
-    this.updateSession(sessionId, { questions: [...questions, newQuestion] });
+  static async endSession(sessionId: string): Promise<InterviewSession> {
+    return api.post<InterviewSession>(`/sessions/${sessionId}/end`);
   }
 
-  // Remove a question
-  static removeQuestion(sessionId: string, questionId: string): void {
-    const current = this.getSession(sessionId);
-    if (!current) return;
+  // ============================================
+  // Permissions
+  // ============================================
 
-    const questions = (current.questions || []).filter(q => q.id !== questionId);
-    this.updateSession(sessionId, { questions });
-  }
-
-  // Update a question
-  static updateQuestion(sessionId: string, questionId: string, title: string, content: string): void {
-    const current = this.getSession(sessionId);
-    if (!current) return;
-
-    const questions = (current.questions || []).map(q =>
-      q.id === questionId ? { ...q, title, content } : q
+  static async toggleCandidateTyping(sessionId: string): Promise<boolean> {
+    const result = await api.post<{ canCandidateType: boolean }>(
+      `/sessions/${sessionId}/permissions/typing`
     );
-    this.updateSession(sessionId, { questions });
+    return result.canCandidateType;
   }
 
-  // Add a message to shared chat
-  static addMessage(sessionId: string, message: Omit<Message, 'id' | 'timestamp'>): void {
-    const current = this.getSession(sessionId);
-    if (!current) return;
+  static async toggleCandidateRun(sessionId: string): Promise<boolean> {
+    const result = await api.post<{ canCandidateRun: boolean }>(
+      `/sessions/${sessionId}/permissions/run`
+    );
+    return result.canCandidateRun;
+  }
 
-    const newMessage: Message = {
-      ...message,
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: Date.now()
+  // ============================================
+  // Questions
+  // ============================================
+
+  static async getQuestions(sessionId: string): Promise<Question[]> {
+    return api.get<Question[]>(`/sessions/${sessionId}/questions`);
+  }
+
+  static async addQuestion(sessionId: string, title: string, content: string): Promise<Question> {
+    return api.post<Question>(`/sessions/${sessionId}/questions`, { title, content });
+  }
+
+  static async updateQuestion(
+    sessionId: string,
+    questionId: string,
+    title: string,
+    content: string
+  ): Promise<Question> {
+    return api.put<Question>(`/sessions/${sessionId}/questions/${questionId}`, { title, content });
+  }
+
+  static async removeQuestion(sessionId: string, questionId: string): Promise<void> {
+    await api.delete(`/sessions/${sessionId}/questions/${questionId}`);
+  }
+
+  // ============================================
+  // Messages
+  // ============================================
+
+  static async getMessages(sessionId: string, since?: number): Promise<Message[]> {
+    const endpoint = since
+      ? `/sessions/${sessionId}/messages?since=${since}`
+      : `/sessions/${sessionId}/messages`;
+    return api.get<Message[]>(endpoint);
+  }
+
+  static async addMessage(sessionId: string, content: string): Promise<Message> {
+    return api.post<Message>(`/sessions/${sessionId}/messages`, { content });
+  }
+
+  // ============================================
+  // Notes
+  // ============================================
+
+  static async getUserNotes(sessionId: string): Promise<string> {
+    const result = await api.get<{ notes: string }>(`/sessions/${sessionId}/notes`);
+    return result.notes;
+  }
+
+  static async updateUserNotes(sessionId: string, notes: string): Promise<string> {
+    const result = await api.put<{ notes: string }>(`/sessions/${sessionId}/notes`, { notes });
+    return result.notes;
+  }
+
+  // ============================================
+  // Code Execution
+  // ============================================
+
+  static async executeCode(code: string, language: Language): Promise<ExecutionResult> {
+    return api.post<ExecutionResult>('/code/execute', { code, language });
+  }
+
+  // ============================================
+  // Real-time Updates (Polling)
+  // ============================================
+
+  static subscribeToSession(
+    sessionId: string,
+    callback: (session: InterviewSession | null) => void
+  ): () => void {
+    let isActive = true;
+
+    const poll = async () => {
+      if (!isActive) return;
+
+      try {
+        const session = await this.getSession(sessionId);
+        if (isActive) {
+          callback(session);
+        }
+      } catch {
+        if (isActive) {
+          callback(null);
+        }
+      }
+
+      if (isActive) {
+        setTimeout(poll, this.POLL_INTERVAL);
+      }
     };
 
-    const existingMessages = current.sharedMessages || [];
-    this.updateSession(sessionId, {
-      sharedMessages: [...existingMessages, newMessage]
-    });
-  }
+    // Start polling
+    poll();
 
-  // Toggle candidate typing permission
-  static toggleCandidateTyping(sessionId: string): boolean {
-    const current = this.getSession(sessionId);
-    if (!current) return false;
-
-    const newValue = !current.permissions.canCandidateType;
-    this.updateSession(sessionId, {
-      permissions: { ...current.permissions, canCandidateType: newValue }
-    });
-    return newValue;
-  }
-
-  // Toggle candidate run permission
-  static toggleCandidateRun(sessionId: string): boolean {
-    const current = this.getSession(sessionId);
-    if (!current) return false;
-
-    const newValue = !current.permissions.canCandidateRun;
-    this.updateSession(sessionId, {
-      permissions: { ...current.permissions, canCandidateRun: newValue }
-    });
-    return newValue;
-  }
-
-  // Subscribe to updates for a specific session
-  static subscribeToSession(sessionId: string, callback: (session: InterviewSession | null) => void): () => void {
-    return StorageService.subscribe<InterviewSession>(`${this.SESSION_PREFIX}${sessionId}`, callback);
+    // Return unsubscribe function
+    return () => {
+      isActive = false;
+    };
   }
 }
