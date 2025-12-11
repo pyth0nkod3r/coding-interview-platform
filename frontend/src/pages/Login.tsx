@@ -8,6 +8,7 @@ import { Code2, ArrowRight } from 'lucide-react';
 
 export const Login = () => {
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export const Login = () => {
     setError('');
 
     try {
-      await AuthService.login(username);
+      await AuthService.login(username, password);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to login');
@@ -52,6 +53,13 @@ export const Login = () => {
               placeholder="e.g. coder123"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+            />
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               error={error}
             />
             <Button type="submit" className="w-full" isLoading={isLoading} size="lg">

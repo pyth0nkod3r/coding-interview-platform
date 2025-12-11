@@ -10,6 +10,7 @@ import { Code2, Sparkles } from 'lucide-react';
 export const Signup = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export const Signup = () => {
     setError('');
 
     try {
-      await AuthService.signup(username, email, role);
+      await AuthService.signup(username, email, password, role);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to sign up');
@@ -71,7 +72,15 @@ export const Signup = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            {error && !error.includes('Username') && (
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Create a password (min 4 characters)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={error.includes('Password') ? error : ''}
+            />
+            {error && !error.includes('Username') && !error.includes('Password') && (
               <p className="text-xs text-red-500">{error}</p>
             )}
             <Button type="submit" className="w-full" isLoading={isLoading} size="lg">

@@ -9,6 +9,7 @@ export interface User {
     id: string;
     username: string;
     email: string;
+    password: string; // Note: In production, this would be hashed
     role: UserRole;
 }
 
@@ -66,11 +67,13 @@ export interface ExecutionResult {
 // Request/Response types
 export interface LoginRequest {
     username: string;
+    password: string;
 }
 
 export interface SignupRequest {
     username: string;
     email: string;
+    password: string;
     role: UserRole;
 }
 

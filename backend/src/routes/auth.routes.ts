@@ -11,19 +11,25 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
     fastify.post<{ Body: LoginRequest }>(
         '/login',
         async (request: FastifyRequest<{ Body: LoginRequest }>, reply: FastifyReply) => {
-            const { username } = request.body;
+            const { username, password } = request.body;
 
-            if (!username) {
-                return reply.status(400).send({ message: 'Username is required', code: 'BAD_REQUEST' });
+            if (!username || !password) {
+                return reply.status(400).send({ message: 'Username and password are required', code: 'BAD_REQUEST' });
             }
 
             const user = AuthService.getUserByUsername(username);
             if (!user) {
-                return reply.status(401).send({ message: 'User not found. Please sign up.', code: 'USER_NOT_FOUND' });
+                return reply.status(401).send({ message: 'Invalid username or password', code: 'UNAUTHORIZED' });
+            }
+
+            if (!AuthService.validatePassword(user, password)) {
+                return reply.status(401).send({ message: 'Invalid username or password', code: 'UNAUTHORIZED' });
             }
 
             const token = fastify.jwt.sign({ id: user.id, username: user.username, role: user.role });
-            return { user, token };
+            // Don't send password back to client
+            const { password: _, ...userWithoutPassword } = user;
+            return { user: userWithoutPassword, token };
         }
     );
 
@@ -31,10 +37,14 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
     fastify.post<{ Body: SignupRequest }>(
         '/signup',
         async (request: FastifyRequest<{ Body: SignupRequest }>, reply: FastifyReply) => {
-            const { username, email, role } = request.body;
+            const { username, email, password, role } = request.body;
 
-            if (!username || !email || !role) {
-                return reply.status(400).send({ message: 'Username, email, and role are required', code: 'BAD_REQUEST' });
+            if (!username || !email || !password || !role) {
+                return reply.status(400).send({ message: 'Username, email, password, and role are required', code: 'BAD_REQUEST' });
+            }
+
+            if (password.length < 4) {
+                return reply.status(400).send({ message: 'Password must be at least 4 characters', code: 'BAD_REQUEST' });
             }
 
             if (role !== 'interviewer' && role !== 'candidate') {
@@ -42,9 +52,11 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
             }
 
             try {
-                const user = AuthService.createUser(username, email, role);
+                const user = AuthService.createUser(username, email, password, role);
                 const token = fastify.jwt.sign({ id: user.id, username: user.username, role: user.role });
-                return reply.status(201).send({ user, token });
+                // Don't send password back to client
+                const { password: _, ...userWithoutPassword } = user;
+                return reply.status(201).send({ user: userWithoutPassword, token });
             } catch (error) {
                 return reply.status(400).send({
                     message: error instanceof Error ? error.message : 'Signup failed',

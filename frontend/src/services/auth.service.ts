@@ -20,8 +20,8 @@ interface AuthResponse {
 const USER_KEY = 'current_user';
 
 export class AuthService {
-  static async login(username: string): Promise<User> {
-    const response = await api.post<AuthResponse>('/auth/login', { username });
+  static async login(username: string, password: string): Promise<User> {
+    const response = await api.post<AuthResponse>('/auth/login', { username, password });
 
     // Store token and user
     api.setToken(response.token);
@@ -30,10 +30,11 @@ export class AuthService {
     return response.user;
   }
 
-  static async signup(username: string, email: string, role: UserRole): Promise<User> {
+  static async signup(username: string, email: string, password: string, role: UserRole): Promise<User> {
     const response = await api.post<AuthResponse>('/auth/signup', {
       username,
       email,
+      password,
       role
     });
 
