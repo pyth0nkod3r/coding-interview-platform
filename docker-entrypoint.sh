@@ -4,7 +4,7 @@ set -e
 echo "=== Interview Platform Startup ==="
 
 echo "Running database migrations..."
-npx prisma migrate deploy
+npm exec -- prisma migrate deploy
 
 echo "Starting backend server..."
 node dist/server.js &

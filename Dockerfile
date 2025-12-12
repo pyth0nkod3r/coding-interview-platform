@@ -30,8 +30,8 @@ COPY backend/prisma ./prisma/
 # Install dependencies
 RUN npm ci
 
-# Generate Prisma client
-RUN npx prisma generate
+# Generate Prisma client (use installed version, not latest)
+RUN npm exec -- prisma generate
 
 # Copy source code
 COPY backend/ .
@@ -54,8 +54,8 @@ COPY backend/prisma ./prisma/
 # Install production dependencies only
 RUN npm ci --omit=dev
 
-# Generate Prisma client for production
-RUN npx prisma generate
+# Generate Prisma client for production (use installed version)
+RUN npm exec -- prisma generate
 
 # Copy backend build from builder stage
 COPY --from=backend-builder /app/backend/dist ./dist
