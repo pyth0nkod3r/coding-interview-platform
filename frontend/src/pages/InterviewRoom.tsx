@@ -11,7 +11,7 @@ import { Badge } from '../components/ui/Badge';
 import {
   Play, SquareTerminal, Loader2, Copy, Check, Lock, Unlock,
   Settings, Code2, MessageSquare, FileQuestion, XCircle, Send,
-  Edit3, Eye
+  Edit3, Eye, ArrowLeft, LayoutDashboard
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useDebounce } from '../hooks/useDebounce';
@@ -35,6 +35,8 @@ export const InterviewRoom = () => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [lastSeenMessageCount, setLastSeenMessageCount] = useState(0);
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [isEndingSession, setIsEndingSession] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Real-time sync debounce
@@ -51,6 +53,9 @@ export const InterviewRoom = () => {
 
     if (!id) return;
 
+    // Store initial user ID to detect account switches
+    let initialUserId = currentUser.id;
+
     // Handle same-browser multi-tab scenario - refresh user on focus
     const handleFocus = () => {
       const latestUser = AuthService.getCurrentUser();
@@ -58,8 +63,9 @@ export const InterviewRoom = () => {
         navigate('/login');
         return;
       }
-      // If user switched accounts, reload the page to get fresh state
-      if (latestUser.id !== currentUser.id) {
+      // If user switched accounts after initial load, reload the page
+      if (initialUserId && latestUser.id !== initialUserId) {
+        initialUserId = latestUser.id; // Update to prevent multiple reloads
         window.location.reload();
       }
     };
@@ -218,9 +224,14 @@ export const InterviewRoom = () => {
   };
 
   const handleEndSession = async () => {
-    if (!id) return;
-    if (confirm('Are you sure you want to end this interview session?')) {
+    if (!id || isEndingSession) return;
+    setIsEndingSession(true);
+    try {
       await InterviewService.endSession(id);
+      navigate('/dashboard');
+    } finally {
+      setIsEndingSession(false);
+      setShowEndConfirmation(false);
     }
   };
 
@@ -263,20 +274,42 @@ export const InterviewRoom = () => {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Session Ended Banner */}
       {isEnded && (
-        <div className="bg-red-500/20 border-b border-red-500/30 px-4 py-2 text-center text-red-400 text-sm">
-          This interview session has ended.
+        <div className="bg-red-500/20 border-b border-red-500/30 px-4 py-2 flex items-center justify-center gap-4">
+          <span className="text-red-400 text-sm">This interview session has ended.</span>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 text-white rounded-md transition-colors"
+          >
+            Back to Dashboard
+          </button>
         </div>
       )}
 
       {/* Navbar */}
       <header className="h-14 border-b border-border bg-card/50 backdrop-blur flex items-center justify-between px-4 z-10">
         <div className="flex items-center gap-4">
+          {/* Back to Dashboard Button */}
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
               <Code2 className="w-5 h-5" />
             </div>
             <span className="font-semibold hidden sm:inline-block">Interview Room</span>
           </div>
+          {/* Dashboard Link */}
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </button>
           <div className="h-4 w-[1px] bg-border mx-2" />
           <Badge variant="outline" className="font-mono text-xs">{session.id}</Badge>
           <Badge variant={isInterviewer ? 'default' : 'secondary'} className="text-xs">
@@ -370,13 +403,49 @@ export const InterviewRoom = () => {
 
           {/* End Session - Interviewer Only */}
           {isInterviewer && !isEnded && (
-            <Button size="sm" variant="destructive" onClick={handleEndSession}>
+            <Button size="sm" variant="destructive" onClick={() => setShowEndConfirmation(true)}>
               <XCircle className="w-4 h-4 mr-2" />
               End
             </Button>
           )}
         </div>
       </header>
+
+      {/* End Session Confirmation Modal */}
+      {showEndConfirmation && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-slide-up">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <XCircle className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">End Interview Session?</h3>
+                <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to end this interview session? The candidate will no longer be able to edit code or send messages.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => setShowEndConfirmation(false)}
+                disabled={isEndingSession}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleEndSession}
+                isLoading={isEndingSession}
+              >
+                End Interview
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Layout */}
       <div className="flex-1 flex overflow-hidden">

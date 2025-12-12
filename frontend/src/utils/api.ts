@@ -1,7 +1,7 @@
 // src/utils/api.ts
 // HTTP client for backend API communication
 
-const API_BASE_URL = 'http://localhost:3001/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 const TOKEN_KEY = 'auth_token';
 
 export interface ApiError {

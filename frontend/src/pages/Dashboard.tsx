@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthService } from '../services/auth.service';
 import type { User } from '../services/auth.service';
@@ -7,7 +7,7 @@ import type { InterviewSession } from '../services/interview.service';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { Plus, Clock, Code, LogOut, Search, Link as LinkIcon } from 'lucide-react';
+import { Plus, Clock, Code, LogOut, Search, Link as LinkIcon, MoreVertical, Copy, ExternalLink, Check } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 
 export const Dashboard = () => {
@@ -17,6 +17,9 @@ export const Dashboard = () => {
   const [createError, setCreateError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [joinInterviewId, setJoinInterviewId] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +35,17 @@ export const Dashboard = () => {
       .then(sessions => setSessions(sessions.reverse()))
       .catch(err => console.error('Failed to fetch sessions', err));
   }, [navigate]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleCreateSession = async () => {
     if (!user) return;
@@ -57,11 +71,31 @@ export const Dashboard = () => {
     if (!joinInterviewId.trim()) return;
     // Extract interview ID from full URL or use as-is
     let interviewId = joinInterviewId.trim();
-    const urlMatch = interviewId.match(/\/interview\/([a-zA-Z0-9]+)/);
+    const urlMatch = interviewId.match(/\/interview\/([a-zA-Z0-9-]+)/);
     if (urlMatch) {
       interviewId = urlMatch[1];
     }
     navigate(`/interview/${interviewId}`);
+  };
+
+  const handleCopyLink = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const link = `${window.location.origin}/interview/${sessionId}`;
+    navigator.clipboard.writeText(link);
+    setCopiedId(sessionId);
+    setTimeout(() => setCopiedId(null), 2000);
+    setOpenMenuId(null);
+  };
+
+  const handleOpenNewTab = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.open(`/interview/${sessionId}`, '_blank');
+    setOpenMenuId(null);
+  };
+
+  const toggleMenu = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === sessionId ? null : sessionId);
   };
 
   const filteredSessions = sessions.filter(s =>
@@ -162,25 +196,75 @@ export const Dashboard = () => {
             {filteredSessions.map((session) => (
               <Card
                 key={session.id}
-                className="group hover:border-primary/50 transition-colors cursor-pointer glass-panel"
+                className="group hover:border-primary/50 transition-colors cursor-pointer glass-panel relative"
                 onClick={() => navigate(`/interview/${session.id}`)}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    ID: {session.id}
+                  <CardTitle className="text-sm font-medium text-muted-foreground truncate max-w-[60%]">
+                    ID: {session.id.slice(0, 8)}...
                   </CardTitle>
-                  <Badge variant={session.interviewerId === user?.id ? 'default' : 'secondary'}>
-                    {session.interviewerId === user?.id ? 'Interviewer' : 'Candidate'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={session.status === 'ended' ? 'secondary' : 'default'}>
+                      {session.status === 'ended' ? 'Ended' : 'Active'}
+                    </Badge>
+                    {/* 3-dot Menu - visible on hover */}
+                    <div className="relative" ref={openMenuId === session.id ? menuRef : null}>
+                      <button
+                        onClick={(e) => toggleMenu(session.id, e)}
+                        className={`p-1 rounded-md hover:bg-white/10 transition-all ${openMenuId === session.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                      {openMenuId === session.id && (
+                        <div className="absolute right-0 top-8 z-50 min-w-[160px] bg-zinc-900 border border-border rounded-lg shadow-2xl py-1 animate-slide-up">
+                          <button
+                            onClick={(e) => handleCopyLink(session.id, e)}
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-white/10 flex items-center gap-2 transition-colors"
+                          >
+                            {copiedId === session.id ? (
+                              <>
+                                <Check className="w-4 h-4 text-green-400" />
+                                <span className="text-green-400">Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                Copy Link
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={(e) => handleOpenNewTab(session.id, e)}
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-white/10 flex items-center gap-2 transition-colors"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Open in New Tab
+                          </button>
+                          <div className="border-t border-border my-1" />
+                          <div className="px-3 py-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-3 h-3" />
+                              {new Date(session.createdAt).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center space-x-2 text-2xl font-bold py-2">
                     <Code className="h-6 w-6 text-primary" />
                     <span className="capitalize">{session.codeState.language}</span>
                   </div>
-                  <div className="flex items-center text-xs text-muted-foreground mt-4">
-                    <Clock className="mr-1 h-3 w-3" />
-                    {new Date(session.createdAt).toLocaleString()}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-4">
+                    <div className="flex items-center">
+                      <Clock className="mr-1 h-3 w-3" />
+                      {new Date(session.createdAt).toLocaleDateString()}
+                    </div>
+                    <Badge variant={session.interviewerId === user?.id ? 'outline' : 'secondary'} className="text-[10px]">
+                      {session.interviewerId === user?.id ? 'Interviewer' : 'Candidate'}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>

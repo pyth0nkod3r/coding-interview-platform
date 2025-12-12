@@ -17,7 +17,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
                 return reply.status(400).send({ message: 'Username and password are required', code: 'BAD_REQUEST' });
             }
 
-            const user = AuthService.getUserByUsername(username);
+            const user = await AuthService.getUserByUsername(username);
             if (!user) {
                 return reply.status(401).send({ message: 'Invalid username or password', code: 'UNAUTHORIZED' });
             }
@@ -55,7 +55,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
             }
 
             try {
-                const user = AuthService.createUser(username, email, password, userRole);
+                const user = await AuthService.createUser(username, email, password, userRole);
                 const token = fastify.jwt.sign({ id: user.id, username: user.username, role: user.role });
                 // Don't send password back to client
                 const { password: _, ...userWithoutPassword } = user;
@@ -85,7 +85,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         '/me',
         { preHandler: [authenticate] },
         async (request: FastifyRequest, reply: FastifyReply) => {
-            const user = AuthService.getUserById(request.user.id);
+            const user = await AuthService.getUserById(request.user.id);
             if (!user) {
                 return reply.status(404).send({ message: 'User not found', code: 'NOT_FOUND' });
             }

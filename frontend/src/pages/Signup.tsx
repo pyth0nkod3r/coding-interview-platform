@@ -20,6 +20,9 @@ export const Signup = () => {
   const isInterviewerSignup = location.pathname.includes('/interviewer');
   const role: UserRole = isInterviewerSignup ? 'interviewer' : 'candidate';
 
+  // Get the redirect destination from location state, or default to dashboard
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -27,7 +30,8 @@ export const Signup = () => {
 
     try {
       await AuthService.signup(username, email, password, role);
-      navigate('/dashboard');
+      // Redirect to the originally requested page or dashboard
+      navigate(from, { replace: true });
     } catch (err: any) {
       setError(err.message || 'Failed to sign up');
     } finally {

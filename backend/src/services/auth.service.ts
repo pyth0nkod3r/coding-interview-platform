@@ -1,25 +1,34 @@
 // src/services/auth.service.ts
 // Authentication business logic
 
-import { db } from '../db/mock.db.js';
+import { prisma } from '../db/prisma.js';
 import type { User, UserRole } from '../types/index.js';
 
 export class AuthService {
-    static createUser(username: string, email: string, password: string, role: UserRole): User {
-        const existingUser = db.getUserByUsername(username);
+    static async createUser(username: string, email: string, password: string, role: UserRole): Promise<User> {
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { username },
+                    { email }
+                ]
+            }
+        });
+
         if (existingUser) {
-            throw new Error('Username already taken');
+            throw new Error('Username or email already taken');
         }
 
-        const user: User = {
-            id: db.generateId(),
-            username,
-            email,
-            password, // Note: In production, hash this with bcrypt
-            role,
-        };
+        const user = await prisma.user.create({
+            data: {
+                username,
+                email,
+                password, // Note: In production, hash this with bcrypt
+                role,
+            }
+        });
 
-        return db.createUser(user);
+        return user as User;
     }
 
     static validatePassword(user: User, password: string): boolean {
@@ -27,11 +36,17 @@ export class AuthService {
         return user.password === password;
     }
 
-    static getUserByUsername(username: string): User | undefined {
-        return db.getUserByUsername(username);
+    static async getUserByUsername(username: string): Promise<User | null> {
+        const user = await prisma.user.findUnique({
+            where: { username }
+        });
+        return user as User | null;
     }
 
-    static getUserById(id: string): User | undefined {
-        return db.getUserById(id);
+    static async getUserById(id: string): Promise<User | null> {
+        const user = await prisma.user.findUnique({
+            where: { id }
+        });
+        return user as User | null;
     }
 }

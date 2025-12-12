@@ -35,13 +35,13 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
 
     // POST /sessions - Create session
     fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-        const user = AuthService.getUserById(request.user.id);
+        const user = await AuthService.getUserById(request.user.id);
         if (!user) {
             return reply.status(401).send({ message: 'User not found', code: 'UNAUTHORIZED' });
         }
 
         try {
-            const session = SessionService.createSession(user);
+            const session = await SessionService.createSession(user);
             return reply.status(201).send(session);
         } catch (error) {
             return reply.status(403).send({
@@ -53,14 +53,14 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
 
     // GET /sessions - Get all sessions
     fastify.get('/', async (request: FastifyRequest) => {
-        return SessionService.getSessionsByUser(request.user.id);
+        return await SessionService.getSessionsByUser(request.user.id);
     });
 
     // GET /sessions/:sessionId
     fastify.get<{ Params: SessionParams }>(
         '/:sessionId',
         async (request: FastifyRequest<{ Params: SessionParams }>, reply: FastifyReply) => {
-            const session = SessionService.getSession(request.params.sessionId);
+            const session = await SessionService.getSession(request.params.sessionId);
             if (!session) {
                 return reply.status(404).send({ message: 'Session not found', code: 'NOT_FOUND' });
             }
@@ -75,7 +75,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
             const { codeState, permissions } = request.body;
 
             try {
-                const session = SessionService.updateSession(request.params.sessionId, { codeState, permissions });
+                const session = await SessionService.updateSession(request.params.sessionId, { codeState, permissions });
                 if (!session) {
                     return reply.status(404).send({ message: 'Session not found', code: 'NOT_FOUND' });
                 }
@@ -94,7 +94,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
         '/:sessionId/join',
         async (request: FastifyRequest<{ Params: SessionParams }>, reply: FastifyReply) => {
             try {
-                const session = SessionService.joinSession(request.params.sessionId, request.user.id);
+                const session = await SessionService.joinSession(request.params.sessionId, request.user.id);
                 return session;
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Join failed';
@@ -111,7 +111,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
         '/:sessionId/end',
         async (request: FastifyRequest<{ Params: SessionParams }>, reply: FastifyReply) => {
             try {
-                const session = SessionService.endSession(request.params.sessionId, request.user.id);
+                const session = await SessionService.endSession(request.params.sessionId, request.user.id);
                 return session;
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'End failed';
@@ -132,7 +132,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
         '/:sessionId/permissions/typing',
         async (request: FastifyRequest<{ Params: SessionParams }>, reply: FastifyReply) => {
             try {
-                const canCandidateType = SessionService.toggleCandidateTyping(
+                const canCandidateType = await SessionService.toggleCandidateTyping(
                     request.params.sessionId,
                     request.user.id
                 );
@@ -152,7 +152,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
         '/:sessionId/permissions/run',
         async (request: FastifyRequest<{ Params: SessionParams }>, reply: FastifyReply) => {
             try {
-                const canCandidateRun = SessionService.toggleCandidateRun(
+                const canCandidateRun = await SessionService.toggleCandidateRun(
                     request.params.sessionId,
                     request.user.id
                 );
@@ -175,7 +175,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
     fastify.get<{ Params: SessionParams }>(
         '/:sessionId/questions',
         async (request: FastifyRequest<{ Params: SessionParams }>, reply: FastifyReply) => {
-            const session = SessionService.getSession(request.params.sessionId);
+            const session = await SessionService.getSession(request.params.sessionId);
             if (!session) {
                 return reply.status(404).send({ message: 'Session not found', code: 'NOT_FOUND' });
             }
@@ -194,7 +194,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
             }
 
             try {
-                const question = SessionService.addQuestion(
+                const question = await SessionService.addQuestion(
                     request.params.sessionId,
                     request.user.id,
                     title,
@@ -222,7 +222,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
             }
 
             try {
-                const question = SessionService.updateQuestion(
+                const question = await SessionService.updateQuestion(
                     request.params.sessionId,
                     request.user.id,
                     request.params.questionId,
@@ -245,7 +245,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
         '/:sessionId/questions/:questionId',
         async (request: FastifyRequest<{ Params: QuestionParams }>, reply: FastifyReply) => {
             try {
-                SessionService.removeQuestion(
+                await SessionService.removeQuestion(
                     request.params.sessionId,
                     request.user.id,
                     request.params.questionId
@@ -272,7 +272,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
             const since = request.query.since ? parseInt(request.query.since, 10) : undefined;
 
             try {
-                return SessionService.getMessages(request.params.sessionId, since);
+                return await SessionService.getMessages(request.params.sessionId, since);
             } catch (error) {
                 return reply.status(404).send({ message: 'Session not found', code: 'NOT_FOUND' });
             }
@@ -289,13 +289,13 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
                 return reply.status(400).send({ message: 'Content is required', code: 'BAD_REQUEST' });
             }
 
-            const user = AuthService.getUserById(request.user.id);
+            const user = await AuthService.getUserById(request.user.id);
             if (!user) {
                 return reply.status(401).send({ message: 'User not found', code: 'UNAUTHORIZED' });
             }
 
             try {
-                const message = SessionService.addMessage(request.params.sessionId, user, content);
+                const message = await SessionService.addMessage(request.params.sessionId, user, content);
                 return reply.status(201).send(message);
             } catch (error) {
                 return reply.status(404).send({ message: 'Session not found', code: 'NOT_FOUND' });
@@ -312,7 +312,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
         '/:sessionId/notes',
         async (request: FastifyRequest<{ Params: SessionParams }>, reply: FastifyReply) => {
             try {
-                const notes = SessionService.getUserNotes(request.params.sessionId, request.user.id);
+                const notes = await SessionService.getUserNotes(request.params.sessionId, request.user.id);
                 return { notes };
             } catch (error) {
                 return reply.status(404).send({ message: 'Session not found', code: 'NOT_FOUND' });
@@ -331,7 +331,7 @@ export async function sessionsRoutes(fastify: FastifyInstance): Promise<void> {
             }
 
             try {
-                const updatedNotes = SessionService.updateUserNotes(
+                const updatedNotes = await SessionService.updateUserNotes(
                     request.params.sessionId,
                     request.user.id,
                     notes

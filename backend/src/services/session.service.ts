@@ -1,64 +1,149 @@
 // src/services/session.service.ts
 // Session management business logic
 
-import { db } from '../db/mock.db.js';
+import { prisma } from '../db/prisma.js';
 import type {
     InterviewSession,
     User,
     Question,
     Message,
     CodeState,
-    Permissions
+    Permissions,
+    SessionStatus,
+    Language,
+    UserRole
 } from '../types/index.js';
 
 export class SessionService {
-    static createSession(interviewer: User): InterviewSession {
+    // Helper to map Prisma session to domain Session
+    private static mapToSession(pSession: any): InterviewSession {
+        const privateNotes: Record<string, string> = {};
+        if (pSession.notes) {
+            pSession.notes.forEach((n: any) => {
+                privateNotes[n.userId] = n.content;
+            });
+        }
+
+        return {
+            id: pSession.id,
+            interviewerId: pSession.interviewerId,
+            candidateId: pSession.candidateId || undefined,
+            createdAt: pSession.createdAt.getTime(),
+            status: pSession.status as SessionStatus,
+            questions: pSession.questions?.map((q: any) => ({
+                id: q.id,
+                title: q.title,
+                content: q.content,
+                createdAt: q.createdAt.getTime()
+            })) || [],
+            codeState: {
+                code: pSession.code,
+                language: pSession.language as Language,
+            },
+            permissions: {
+                canCandidateRun: pSession.canCandidateRun,
+                canCandidateType: pSession.canCandidateType
+            },
+            privateNotes,
+            sharedMessages: pSession.messages?.map((m: any) => ({
+                id: m.id,
+                senderId: m.senderId,
+                senderRole: m.sender.role as UserRole,
+                senderName: m.sender.username,
+                content: m.content,
+                timestamp: m.timestamp.getTime()
+            })) || []
+        };
+    }
+
+    private static includeOptions = {
+        questions: { orderBy: { createdAt: 'asc' as const } },
+        messages: {
+            include: { sender: true },
+            orderBy: { timestamp: 'asc' as const }
+        },
+        notes: true
+    };
+
+    static async createSession(interviewer: User): Promise<InterviewSession> {
         if (interviewer.role !== 'interviewer') {
             throw new Error('Only interviewers can create sessions');
         }
 
-        const session: InterviewSession = {
-            id: db.generateId(),
-            interviewerId: interviewer.id,
-            createdAt: Date.now(),
-            status: 'active',
-            questions: [],
-            codeState: {
+        const session = await prisma.session.create({
+            data: {
+                interviewerId: interviewer.id,
+                status: 'active',
                 code: '// Start coding here...',
                 language: 'javascript',
-            },
-            permissions: {
                 canCandidateRun: true,
                 canCandidateType: true,
             },
-            privateNotes: {},
-            sharedMessages: [],
-        };
+            include: SessionService.includeOptions
+        });
 
-        return db.createSession(session);
+        return SessionService.mapToSession(session);
     }
 
-    static getSession(id: string): InterviewSession | undefined {
-        return db.getSession(id);
+    static async getSession(id: string): Promise<InterviewSession | null> {
+        const session = await prisma.session.findUnique({
+            where: { id },
+            include: SessionService.includeOptions
+        });
+        if (!session) return null;
+        return SessionService.mapToSession(session);
     }
 
-    static getSessionsByUser(userId: string): InterviewSession[] {
-        return db.getSessionsByUser(userId);
+    static async getSessionsByUser(userId: string): Promise<InterviewSession[]> {
+        const sessions = await prisma.session.findMany({
+            where: {
+                OR: [
+                    { interviewerId: userId },
+                    { candidateId: userId }
+                ]
+            },
+            include: SessionService.includeOptions,
+            orderBy: { createdAt: 'desc' as const }
+        });
+        return sessions.map(SessionService.mapToSession);
     }
 
-    static getAllSessions(): InterviewSession[] {
-        return db.getAllSessions();
+    static async getAllSessions(): Promise<InterviewSession[]> {
+        const sessions = await prisma.session.findMany({
+            include: SessionService.includeOptions,
+            orderBy: { createdAt: 'desc' as const }
+        });
+        return sessions.map(SessionService.mapToSession);
     }
 
-    static updateSession(
+    static async updateSession(
         id: string,
         updates: { codeState?: CodeState; permissions?: Permissions }
-    ): InterviewSession | undefined {
-        return db.updateSession(id, updates);
+    ): Promise<InterviewSession | null> {
+        const data: any = {};
+        if (updates.codeState) {
+            data.code = updates.codeState.code;
+            data.language = updates.codeState.language;
+        }
+        if (updates.permissions) {
+            data.canCandidateRun = updates.permissions.canCandidateRun;
+            data.canCandidateType = updates.permissions.canCandidateType;
+        }
+
+        try {
+            const session = await prisma.session.update({
+                where: { id },
+                data,
+                include: SessionService.includeOptions
+            });
+            return SessionService.mapToSession(session);
+        } catch (e) {
+            return null;
+        }
     }
 
-    static joinSession(sessionId: string, candidateId: string): InterviewSession {
-        const session = db.getSession(sessionId);
+    static async joinSession(sessionId: string, candidateId: string): Promise<InterviewSession> {
+        const session = await prisma.session.findUnique({ where: { id: sessionId } });
         if (!session) {
             throw new Error('Session not found');
         }
@@ -69,13 +154,16 @@ export class SessionService {
             throw new Error('Session already has a candidate');
         }
 
-        const updated = db.updateSession(sessionId, { candidateId });
-        if (!updated) throw new Error('Failed to join session');
-        return updated;
+        const updated = await prisma.session.update({
+            where: { id: sessionId },
+            data: { candidateId },
+            include: SessionService.includeOptions
+        });
+        return SessionService.mapToSession(updated);
     }
 
-    static endSession(sessionId: string, userId: string): InterviewSession {
-        const session = db.getSession(sessionId);
+    static async endSession(sessionId: string, userId: string): Promise<InterviewSession> {
+        const session = await prisma.session.findUnique({ where: { id: sessionId } });
         if (!session) {
             throw new Error('Session not found');
         }
@@ -83,39 +171,44 @@ export class SessionService {
             throw new Error('Only interviewer can end session');
         }
 
-        const updated = db.updateSession(sessionId, { status: 'ended' });
-        if (!updated) throw new Error('Failed to end session');
-        return updated;
+        const updated = await prisma.session.update({
+            where: { id: sessionId },
+            data: { status: 'ended' },
+            include: SessionService.includeOptions
+        });
+        return SessionService.mapToSession(updated);
     }
 
     // ============================================
     // Permissions
     // ============================================
 
-    static toggleCandidateTyping(sessionId: string, userId: string): boolean {
-        const session = db.getSession(sessionId);
+    static async toggleCandidateTyping(sessionId: string, userId: string): Promise<boolean> {
+        const session = await prisma.session.findUnique({ where: { id: sessionId } });
         if (!session) throw new Error('Session not found');
         if (session.interviewerId !== userId) {
             throw new Error('Only interviewer can change permissions');
         }
 
-        const newValue = !session.permissions.canCandidateType;
-        db.updateSession(sessionId, {
-            permissions: { ...session.permissions, canCandidateType: newValue },
+        const newValue = !session.canCandidateType;
+        await prisma.session.update({
+            where: { id: sessionId },
+            data: { canCandidateType: newValue }
         });
         return newValue;
     }
 
-    static toggleCandidateRun(sessionId: string, userId: string): boolean {
-        const session = db.getSession(sessionId);
+    static async toggleCandidateRun(sessionId: string, userId: string): Promise<boolean> {
+        const session = await prisma.session.findUnique({ where: { id: sessionId } });
         if (!session) throw new Error('Session not found');
         if (session.interviewerId !== userId) {
             throw new Error('Only interviewer can change permissions');
         }
 
-        const newValue = !session.permissions.canCandidateRun;
-        db.updateSession(sessionId, {
-            permissions: { ...session.permissions, canCandidateRun: newValue },
+        const newValue = !session.canCandidateRun;
+        await prisma.session.update({
+            where: { id: sessionId },
+            data: { canCandidateRun: newValue }
         });
         return newValue;
     }
@@ -124,115 +217,153 @@ export class SessionService {
     // Questions
     // ============================================
 
-    static addQuestion(sessionId: string, userId: string, title: string, content: string): Question {
-        const session = db.getSession(sessionId);
+    static async addQuestion(sessionId: string, userId: string, title: string, content: string): Promise<Question> {
+        const session = await prisma.session.findUnique({ where: { id: sessionId } });
         if (!session) throw new Error('Session not found');
         if (session.interviewerId !== userId) {
             throw new Error('Only interviewer can add questions');
         }
 
-        const question: Question = {
-            id: db.generateId(),
-            title,
-            content,
-            createdAt: Date.now(),
-        };
-
-        db.updateSession(sessionId, {
-            questions: [...session.questions, question],
+        const question = await prisma.question.create({
+            data: {
+                sessionId,
+                title,
+                content
+            }
         });
 
-        return question;
+        return {
+            id: question.id,
+            title: question.title,
+            content: question.content,
+            createdAt: question.createdAt.getTime()
+        };
     }
 
-    static updateQuestion(
+    static async updateQuestion(
         sessionId: string,
         userId: string,
         questionId: string,
         title: string,
         content: string
-    ): Question {
-        const session = db.getSession(sessionId);
+    ): Promise<Question> {
+        const session = await prisma.session.findUnique({ where: { id: sessionId } });
         if (!session) throw new Error('Session not found');
         if (session.interviewerId !== userId) {
             throw new Error('Only interviewer can update questions');
         }
 
-        const questionIndex = session.questions.findIndex(q => q.id === questionId);
-        if (questionIndex === -1) throw new Error('Question not found');
+        // Verify question exists in this session
+        const question = await prisma.question.findFirst({
+            where: { id: questionId, sessionId }
+        });
+        if (!question) throw new Error('Question not found');
 
-        const updatedQuestion = { ...session.questions[questionIndex], title, content };
-        const questions = [...session.questions];
-        questions[questionIndex] = updatedQuestion;
+        const updated = await prisma.question.update({
+            where: { id: questionId },
+            data: { title, content }
+        });
 
-        db.updateSession(sessionId, { questions });
-        return updatedQuestion;
+        return {
+            id: updated.id,
+            title: updated.title,
+            content: updated.content,
+            createdAt: updated.createdAt.getTime()
+        };
     }
 
-    static removeQuestion(sessionId: string, userId: string, questionId: string): void {
-        const session = db.getSession(sessionId);
+    static async removeQuestion(sessionId: string, userId: string, questionId: string): Promise<void> {
+        const session = await prisma.session.findUnique({ where: { id: sessionId } });
         if (!session) throw new Error('Session not found');
         if (session.interviewerId !== userId) {
             throw new Error('Only interviewer can remove questions');
         }
 
-        const questions = session.questions.filter(q => q.id !== questionId);
-        db.updateSession(sessionId, { questions });
+        await prisma.question.deleteMany({
+            where: { id: questionId, sessionId }
+        });
     }
 
     // ============================================
     // Messages
     // ============================================
 
-    static getMessages(sessionId: string, since?: number): Message[] {
-        const session = db.getSession(sessionId);
-        if (!session) throw new Error('Session not found');
-
+    static async getMessages(sessionId: string, since?: number): Promise<Message[]> {
+        const whereClause: any = { sessionId };
         if (since) {
-            return session.sharedMessages.filter(m => m.timestamp > since);
+            whereClause.timestamp = { gt: new Date(since) };
         }
-        return session.sharedMessages;
-    }
 
-    static addMessage(sessionId: string, user: User, content: string): Message {
-        const session = db.getSession(sessionId);
-        if (!session) throw new Error('Session not found');
-
-        const isInterviewer = session.interviewerId === user.id;
-        const message: Message = {
-            id: db.generateId(),
-            senderId: user.id,
-            senderRole: isInterviewer ? 'interviewer' : 'candidate',
-            senderName: user.username,
-            content,
-            timestamp: Date.now(),
-        };
-
-        db.updateSession(sessionId, {
-            sharedMessages: [...session.sharedMessages, message],
+        const messages = await prisma.message.findMany({
+            where: whereClause,
+            include: { sender: true },
+            orderBy: { timestamp: 'asc' as const }
         });
 
-        return message;
+        return messages.map((m: any) => ({
+            id: m.id,
+            senderId: m.senderId,
+            senderRole: m.sender.role as UserRole,
+            senderName: m.sender.username,
+            content: m.content,
+            timestamp: m.timestamp.getTime()
+        }));
+    }
+
+    static async addMessage(sessionId: string, user: User, content: string): Promise<Message> {
+        const session = await prisma.session.findUnique({ where: { id: sessionId } });
+        if (!session) throw new Error('Session not found');
+
+        const message = await prisma.message.create({
+            data: {
+                sessionId,
+                senderId: user.id,
+                content
+            },
+            include: { sender: true }
+        });
+
+        return {
+            id: message.id,
+            senderId: message.senderId,
+            senderRole: message.sender.role as UserRole,
+            senderName: message.sender.username,
+            content: message.content,
+            timestamp: message.timestamp.getTime()
+        };
     }
 
     // ============================================
     // Notes
     // ============================================
 
-    static getUserNotes(sessionId: string, userId: string): string {
-        const session = db.getSession(sessionId);
-        if (!session) throw new Error('Session not found');
-        return session.privateNotes[userId] || '';
+    static async getUserNotes(sessionId: string, userId: string): Promise<string> {
+        const note = await prisma.note.findUnique({
+            where: {
+                sessionId_userId: {
+                    sessionId,
+                    userId
+                }
+            }
+        });
+        return note?.content || '';
     }
 
-    static updateUserNotes(sessionId: string, userId: string, notes: string): string {
-        const session = db.getSession(sessionId);
-        if (!session) throw new Error('Session not found');
-
-        db.updateSession(sessionId, {
-            privateNotes: { ...session.privateNotes, [userId]: notes },
+    static async updateUserNotes(sessionId: string, userId: string, notes: string): Promise<string> {
+        const note = await prisma.note.upsert({
+            where: {
+                sessionId_userId: {
+                    sessionId,
+                    userId
+                }
+            },
+            update: { content: notes },
+            create: {
+                sessionId,
+                userId,
+                content: notes
+            }
         });
-
-        return notes;
+        return note.content;
     }
 }

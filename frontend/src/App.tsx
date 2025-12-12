@@ -1,5 +1,5 @@
 import React from 'react';
-import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { Dashboard } from './pages/Dashboard';
@@ -9,10 +9,13 @@ import { Demo } from './pages/Demo';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthService } from './services/auth.service';
 
-// Protected Route Wrapper
+// Protected Route Wrapper - preserves intended destination for redirect after login
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+
   if (!AuthService.isAuthenticated()) {
-    return <Navigate to="/login" replace />;
+    // Pass the current location as state so login can redirect back
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;
 };

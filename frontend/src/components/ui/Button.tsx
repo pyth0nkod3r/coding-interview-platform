@@ -3,20 +3,21 @@ import { cn } from '../../utils/cn';
 import { Loader2 } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'accent' | 'ghost' | 'destructive';
+  variant?: 'primary' | 'secondary' | 'accent' | 'ghost' | 'destructive' | 'outline';
   size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, children, ...props }, ref) => {
-    
+
     const variants = {
       primary: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(255,255,255,0.1)]',
       secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
       accent: 'bg-accent text-accent-foreground hover:bg-accent/80 border border-white/5',
       ghost: 'hover:bg-accent/50 text-foreground',
       destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+      outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
     };
 
     const sizes = {
