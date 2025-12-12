@@ -104,8 +104,7 @@ export class CodeExecutor {
 
     try {
       // Capture stdout
-      this.pyodide.setStdout({ batched: (msg: string) => { } }); // Reset
-      let logs: string[] = [];
+      const logs: string[] = [];
       this.pyodide.setStdout({ batched: (msg: string) => logs.push(msg) });
 
       await this.pyodide.runPythonAsync(code);
