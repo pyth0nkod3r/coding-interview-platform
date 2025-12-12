@@ -92,7 +92,7 @@ export const Demo = () => {
             return;
         }
 
-        const timers: NodeJS.Timeout[] = [];
+        const timers: number[] = [];
         codeLines.forEach((line, index) => {
             const timer = setTimeout(() => {
                 setTypedCode(prev => [...prev.slice(0, index), line.text]);
@@ -110,7 +110,7 @@ export const Demo = () => {
             return;
         }
 
-        const timers: NodeJS.Timeout[] = [];
+        const timers: number[] = [];
         chatMessages.forEach((_, index) => {
             const timer = setTimeout(() => {
                 setVisibleMessages(index + 1);

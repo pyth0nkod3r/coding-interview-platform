@@ -1,4 +1,3 @@
-import React from 'react';
 import { useRouteError, isRouteErrorResponse, Link } from 'react-router-dom';
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
 import { Button } from './ui/Button';
@@ -57,7 +56,7 @@ export const ErrorBoundary = () => {
         <CardContent className="space-y-6">
           <p className="text-muted-foreground">{message}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="outline" onClick={() => window.location.reload()}>
+            <Button variant="secondary" onClick={() => window.location.reload()}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Try Again
             </Button>
