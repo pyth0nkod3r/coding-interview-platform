@@ -1,0 +1,48 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci
+      
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+      
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=backend/prisma/schema.prisma
+      
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+      
+      - name: Run all tests
+        run: npm run test
+
+  deploy:
+    name: Deploy to Back4App
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Trigger deployment
+        run: |
+          echo "✅ Tests passed! Back4App will auto-deploy from main branch."
+          echo "Deployment is handled by Back4App's GitHub integration."
