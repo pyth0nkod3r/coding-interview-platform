@@ -4,7 +4,7 @@ set -e
 echo "=== Interview Platform Startup ==="
 
 echo "Running database migrations..."
-npm exec -- prisma migrate deploy
+./node_modules/.bin/prisma migrate deploy
 
 echo "Starting backend server..."
 node dist/server.js &
@@ -14,3 +14,5 @@ sleep 2
 
 echo "Starting nginx..."
 nginx -g "daemon off;"
+
+

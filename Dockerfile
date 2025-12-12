@@ -27,11 +27,11 @@ WORKDIR /app/backend
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
-# Install dependencies
+# Install ALL dependencies (including devDeps for prisma CLI)
 RUN npm ci
 
-# Generate Prisma client (use installed version, not latest)
-RUN npm exec -- prisma generate
+# Generate Prisma client using direct binary path (ensures we use installed version)
+RUN ./node_modules/.bin/prisma generate
 
 # Copy source code
 COPY backend/ .
@@ -51,11 +51,11 @@ WORKDIR /app
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
-# Install production dependencies only
+# Install production dependencies (now includes prisma CLI)
 RUN npm ci --omit=dev
 
-# Generate Prisma client for production (use installed version)
-RUN npm exec -- prisma generate
+# Generate Prisma client using direct binary path
+RUN ./node_modules/.bin/prisma generate
 
 # Copy backend build from builder stage
 COPY --from=backend-builder /app/backend/dist ./dist
@@ -75,3 +75,4 @@ EXPOSE 80
 
 # Start both services
 ENTRYPOINT ["/docker-entrypoint.sh"]
+
