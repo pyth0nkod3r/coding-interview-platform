@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    name: Run Tests
+  backend-test:
+    name: Backend Tests
     runs-on: ubuntu-latest
     
     services:
@@ -38,9 +38,6 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
-      - name: Install root dependencies
-        run: npm ci
-      
       - name: Install backend dependencies
         run: npm ci --prefix backend
       
@@ -50,20 +47,37 @@ jobs:
       - name: Setup test database
         run: cd backend && npx prisma db push --skip-generate
       
+      - name: Run backend tests
+        run: npm run test --prefix backend
+
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
       
-      - name: Run all tests
-        run: npm run test
+      - name: Run frontend tests
+        run: npm run test --prefix frontend
 
   deploy:
     name: Deploy to Back4App
-    needs: test
+    needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
       - name: Trigger deployment
         run: |
-          echo "✅ Tests passed! Back4App will auto-deploy from main branch."
+          echo "✅ All tests passed! Back4App will auto-deploy from main branch."
           echo "Deployment is handled by Back4App's GitHub integration."
+
