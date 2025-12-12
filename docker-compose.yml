@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: interview-db
+    environment:
+      POSTGRES_USER: interview
+      POSTGRES_PASSWORD: interview_password
+      POSTGRES_DB: interview_platform
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U interview -d interview_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Unified container (frontend + backend in one)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: interview-app
+    environment:
+      DATABASE_URL: postgresql://interview:interview_password@postgres:5432/interview_platform
+      JWT_SECRET: ${JWT_SECRET:-super-secret-key-change-in-production}
+      PORT: 3001
+    ports:
+      - "80:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # === LEGACY: Separate containers (comment out 'app' above to use these) ===
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: interview-backend
+  #   environment:
+  #     DATABASE_URL: postgresql://interview:interview_password@postgres:5432/interview_platform
+  #     JWT_SECRET: ${JWT_SECRET:-super-secret-key-change-in-production}
+  #     PORT: 3001
+  #   ports:
+  #     - "3001:3001"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: interview-frontend
+  #   ports:
+  #     - "80:80"
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules
+backend/node_modules
+frontend/node_modules
+
+# Build outputs (we build fresh in Docker)
+backend/dist
+frontend/dist
+
+# Git
+.git
+.gitignore
+
+# Cache and temp
+.vite
+*.log
+.DS_Store
+
+# Environment files (use Docker env vars instead)
+.env
+.env.*
+!.env.example
+
+# Test databases
+backend/test.db
+*.db
+
+# IDE
+.vscode
+.idea
+
+# Test files
+backend/tests
+backend/tests_integration
+frontend/src/**/*.test.*
+frontend/src/**/*.spec.*
