@@ -1,16 +1,21 @@
 # Render Blueprint - Unified Docker Container with External Database
-# Database: Use Supabase PostgreSQL (free tier)
+# Database: Use Supabase PostgreSQL (free tier) - Render free tier only allows 1 PostgreSQL
 # Add DATABASE_URL manually in Render Dashboard
 
 services:
   - type: web
     name: interview-platform
     runtime: docker
+    region: oregon
+    plan: free
     dockerfilePath: ./Dockerfile
+    dockerContext: ./
+    healthCheckPath: /health
+    autoDeploy: false
     envVars:
       # Add DATABASE_URL manually in Render Dashboard with Supabase connection string
       - key: DATABASE_URL
-        sync: false # Must be set manually
+        sync: false
       - key: NODE_ENV
         value: production
       - key: JWT_SECRET
