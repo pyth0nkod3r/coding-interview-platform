@@ -10,7 +10,6 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: ./
-    port: 80
     healthCheckPath: /health
     autoDeploy: false
     envVars:
@@ -22,6 +21,8 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: PORT
+        value: "10000"
       - key: BACKEND_PORT
         value: "3001"
 

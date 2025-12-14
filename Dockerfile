@@ -76,8 +76,8 @@ RUN chmod +x /docker-entrypoint.sh
 # Create log directory for supervisor
 RUN mkdir -p /var/log
 
-# Expose port 80 (nginx)
-EXPOSE 80
+# Expose port 10000 (nginx - Render's expected port)
+EXPOSE 10000
 
 # Start services via supervisor
 ENTRYPOINT ["/docker-entrypoint.sh"]
