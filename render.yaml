@@ -1,7 +1,6 @@
-databases:
-  - name: interview-db
-    databaseName: interview
-    user: interview
+# Render Blueprint - Unified Docker Container with External Database
+# Database: Use Supabase PostgreSQL (free tier)
+# Add DATABASE_URL manually in Render Dashboard
 
 services:
   - type: web
@@ -9,10 +8,9 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     envVars:
+      # Add DATABASE_URL manually in Render Dashboard with Supabase connection string
       - key: DATABASE_URL
-        fromDatabase:
-          name: interview-db
-          property: connectionString
+        sync: false # Must be set manually
       - key: NODE_ENV
         value: production
       - key: JWT_SECRET
