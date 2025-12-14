@@ -10,7 +10,7 @@ jobs:
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -25,59 +25,80 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/testdb
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - name: Install backend dependencies
         run: npm ci --prefix backend
-      
+
       - name: Generate Prisma client
         run: cd backend && npx prisma generate
-      
+
       - name: Setup test database
         run: cd backend && npx prisma db push --skip-generate
-      
+
       - name: Run backend tests
         run: npm run test --prefix backend
 
   frontend-test:
     name: Frontend Tests
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
-      
+
       - name: Run frontend tests
         run: npm run test --prefix frontend
 
+  backend-integration-test:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Generate Prisma client (SQLite)
+        run: cd backend && npm run db:generate
+
+      - name: Run integration tests
+        run: npm run test:integration --prefix backend
+
   deploy:
-    name: Deploy to Back4App
-    needs: [backend-test, frontend-test]
+    name: Deploy to Render
+    needs: [backend-test, frontend-test, backend-integration-test]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Trigger deployment
         run: |
-          echo "✅ All tests passed! Back4App will auto-deploy from main branch."
-          echo "Deployment is handled by Back4App's GitHub integration."
-
+          echo "✅ All tests passed! Render will automatically deploy updates from the main branch."
+          echo "Configuration is managed via render.yaml Blueprint."

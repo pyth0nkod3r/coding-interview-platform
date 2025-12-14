@@ -26,8 +26,10 @@ class MockWorker {
 
 // Use window instead of global for browser environment
 (window as any).Worker = MockWorker;
-vi.spyOn(URL, 'createObjectURL').mockImplementation(() => 'blob:mock');
-vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => { });
+vi.stubGlobal('URL', {
+  createObjectURL: vi.fn(() => 'blob:mock'),
+  revokeObjectURL: vi.fn(),
+});
 
 describe('CodeExecutor', () => {
   it('should execute JS code successfully', async () => {

@@ -5,8 +5,8 @@ import { prisma } from '../src/db/prisma.js';
 beforeAll(async () => {
     // Run migrations on test DB
     try {
-        console.log('Migrating test DB at:', process.env.DATABASE_URL);
-        execSync('npx prisma migrate deploy', {
+        console.log('Pushing schema to test DB at:', process.env.DATABASE_URL);
+        execSync('npx prisma db push --schema=prisma/schema.sqlite.prisma --accept-data-loss --skip-generate', {
             env: process.env,
             stdio: 'inherit'
         });

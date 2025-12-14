@@ -6,8 +6,10 @@ export default defineConfig({
         globals: true,
         setupFiles: ['tests_integration/setup.ts'],
         env: {
-            DATABASE_URL: "file:/workspaces/coding-interview-platform/backend/test.db"
+            DATABASE_URL: "file:./prisma/test.db"
         },
         fileParallelism: false,
+        hookTimeout: 60000,
+        testTimeout: 60000,
     },
 });
