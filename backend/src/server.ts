@@ -96,7 +96,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 // Start server with port fallback
 const start = async () => {
     const fastify = await buildServer();
-    const basePort = parseInt(process.env.PORT || '3001', 10);
+    const basePort = parseInt(process.env.BACKEND_PORT || process.env.PORT || '3001', 10);
     const maxRetries = 10;
 
     for (let i = 0; i < maxRetries; i++) {
