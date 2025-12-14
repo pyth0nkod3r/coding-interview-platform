@@ -42,7 +42,8 @@ export class SessionService {
             },
             permissions: {
                 canCandidateRun: pSession.canCandidateRun,
-                canCandidateType: pSession.canCandidateType
+                canCandidateType: pSession.canCandidateType,
+                canRequestVideo: pSession.canRequestVideo ?? true
             },
             privateNotes,
             sharedMessages: pSession.messages?.map((m: any) => ({
@@ -78,6 +79,7 @@ export class SessionService {
                 language: 'javascript',
                 canCandidateRun: true,
                 canCandidateType: true,
+                canRequestVideo: true,
             },
             include: SessionService.includeOptions
         });
@@ -128,6 +130,9 @@ export class SessionService {
         if (updates.permissions) {
             data.canCandidateRun = updates.permissions.canCandidateRun;
             data.canCandidateType = updates.permissions.canCandidateType;
+            if (updates.permissions.canRequestVideo !== undefined) {
+                data.canRequestVideo = updates.permissions.canRequestVideo;
+            }
         }
 
         try {

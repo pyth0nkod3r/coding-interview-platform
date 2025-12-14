@@ -4,12 +4,14 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
+import websocket from '@fastify/websocket';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { fileURLToPath } from 'node:url';
 import { authRoutes } from './routes/auth.routes.js';
 import { sessionsRoutes } from './routes/sessions.routes.js';
 import { codeRoutes } from './routes/code.routes.js';
+import { videoRoutes } from './routes/video.routes.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
     const fastify = Fastify({
@@ -25,6 +27,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     await fastify.register(jwt, {
         secret: process.env.JWT_SECRET || 'super-secret-key-change-in-production',
     });
+
+    // WebSocket support for video signaling
+    await fastify.register(websocket);
 
     // Swagger configuration
     await fastify.register(swagger, {
@@ -61,6 +66,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     await fastify.register(authRoutes, { prefix: '/api/v1/auth' });
     await fastify.register(sessionsRoutes, { prefix: '/api/v1/sessions' });
     await fastify.register(codeRoutes, { prefix: '/api/v1/code' });
+    await fastify.register(videoRoutes, { prefix: '/api/v1/video' });
 
     // API base info
     fastify.get('/api/v1', async () => {

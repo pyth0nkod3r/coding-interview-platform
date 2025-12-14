@@ -39,6 +39,7 @@ model Session {
   // Permissions
   canCandidateRun   Boolean @default(true)
   canCandidateType  Boolean @default(true)
+  canRequestVideo   Boolean @default(true)
   
   interviewer   User     @relation("Interviewer", fields: [interviewerId], references: [id])
   candidate     User?    @relation("Candidate", fields: [candidateId], references: [id])

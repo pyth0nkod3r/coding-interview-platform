@@ -10,7 +10,7 @@ export interface ApiError {
 }
 
 class ApiClient {
-    private getToken(): string | null {
+    getToken(): string | null {
         return localStorage.getItem(TOKEN_KEY);
     }
 

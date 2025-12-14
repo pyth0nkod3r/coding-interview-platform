@@ -32,6 +32,7 @@ export interface Question {
 export interface Permissions {
   canCandidateRun: boolean;
   canCandidateType: boolean;
+  canRequestVideo: boolean;
 }
 
 export interface InterviewSession {

@@ -11,10 +11,13 @@ import { Badge } from '../components/ui/Badge';
 import {
   Play, SquareTerminal, Loader2, Copy, Check, Lock, Unlock,
   Settings, Code2, MessageSquare, FileQuestion, XCircle, Send,
-  Edit3, Eye, ArrowLeft, LayoutDashboard
+  Edit3, Eye, ArrowLeft, LayoutDashboard, Video
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useDebounce } from '../hooks/useDebounce';
+import { webRTCService, type SignalMessage } from '../services/webrtc.service';
+import { VideoPanel } from '../components/video/VideoPanel';
+import { VideoConsentModal } from '../components/video/VideoConsentModal';
 
 const LANGUAGES: Language[] = ['javascript', 'python', 'typescript'];
 
@@ -26,7 +29,7 @@ export const InterviewRoom = () => {
   const [code, setCode] = useState('');
   const [output, setOutput] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [activeTab, setActiveTab] = useState<'output' | 'question' | 'messages' | 'notes'>('output');
+  const [activeTab, setActiveTab] = useState<'output' | 'question' | 'messages' | 'video' | 'notes'>('output');
   const [isCopied, setIsCopied] = useState(false);
   const [messageInput, setMessageInput] = useState('');
   const [newQuestionTitle, setNewQuestionTitle] = useState('');
@@ -38,6 +41,13 @@ export const InterviewRoom = () => {
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Video state
+  const [videoStatus, setVideoStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'waiting' | 'denied'>('disconnected');
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
 
   // Real-time sync debounce
   const debouncedCode = useDebounce(code, 300);
@@ -261,6 +271,147 @@ export const InterviewRoom = () => {
     } finally {
       setIsSendingMessage(false);
     }
+  };
+
+  // ============================================
+  // Video Handlers
+  // ============================================
+
+  // Use refs to avoid reconnection on every session poll update
+  const wsConnectedRef = useRef(false);
+  const sessionRef = useRef(session);
+  sessionRef.current = session; // Keep ref updated with latest session
+
+  // Connect to WebRTC signaling when session is active (only once)
+  useEffect(() => {
+    if (!id || !user || wsConnectedRef.current) return;
+    
+    // Wait for session to be loaded before connecting
+    if (!session || session.status === 'ended') return;
+
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
+    // Mark as connected to prevent re-connection
+    wsConnectedRef.current = true;
+
+    // Connect to signaling server
+    webRTCService.connect(id, token).catch((err) => {
+      console.error('Failed to connect to signaling server:', err);
+      wsConnectedRef.current = false; // Reset on error so we can retry
+    });
+
+    // Listen for signaling messages
+    const unsubscribe = webRTCService.onMessage((message: SignalMessage) => {
+      const currentSession = sessionRef.current;
+      if (!currentSession) return;
+
+      switch (message.type) {
+        case 'video-request':
+          // Candidate receives video request from interviewer
+          if (currentSession.candidateId === user.id) {
+            setShowConsentModal(true);
+          }
+          break;
+
+        case 'video-accept':
+          // Interviewer receives acceptance
+          if (currentSession.interviewerId === user.id) {
+            setVideoStatus('connecting');
+          }
+          break;
+
+        case 'video-reject':
+          // Interviewer receives rejection
+          if (currentSession.interviewerId === user.id) {
+            setVideoStatus('denied');
+          }
+          break;
+
+        case 'video-stop':
+          // Either party stops video
+          setVideoStatus('disconnected');
+          setRemoteStream(null);
+          setLocalStream(null);
+          break;
+
+        case 'peer-connected':
+          // Remote stream is available
+          if (message.payload instanceof MediaStream) {
+            setRemoteStream(message.payload);
+            setVideoStatus('connected');
+          } else {
+            // For interviewer, the remote stream comes from ontrack event
+            const stream = webRTCService.getRemoteStream();
+            if (stream) {
+              setRemoteStream(stream);
+              setVideoStatus('connected');
+            }
+          }
+          break;
+
+        case 'peer-disconnected':
+          setVideoStatus('disconnected');
+          setRemoteStream(null);
+          break;
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      webRTCService.cleanup();
+      wsConnectedRef.current = false;
+    };
+  }, [id, user?.id, session?.id, session?.status]); // Only depend on stable identifiers
+
+  // Cleanup video on unmount or session end
+  useEffect(() => {
+    if (session?.status === 'ended') {
+      webRTCService.cleanup();
+      setVideoStatus('disconnected');
+      setLocalStream(null);
+      setRemoteStream(null);
+    }
+  }, [session?.status]);
+
+  const handleRequestVideo = () => {
+    setVideoStatus('waiting');
+    webRTCService.requestVideo();
+  };
+
+  const handleAcceptVideo = async () => {
+    setIsVideoLoading(true);
+    try {
+      // Start camera
+      const stream = await webRTCService.startCamera();
+      setLocalStream(stream);
+
+      // Accept the video request
+      webRTCService.acceptVideo();
+
+      // Create and send offer
+      await webRTCService.createOffer();
+
+      setVideoStatus('connected');
+      setShowConsentModal(false);
+    } catch (err) {
+      console.error('Failed to start camera:', err);
+      setVideoStatus('disconnected');
+    } finally {
+      setIsVideoLoading(false);
+    }
+  };
+
+  const handleRejectVideo = () => {
+    webRTCService.rejectVideo();
+    setShowConsentModal(false);
+  };
+
+  const handleStopVideo = () => {
+    webRTCService.stopVideo();
+    setVideoStatus('disconnected');
+    setLocalStream(null);
+    setRemoteStream(null);
   };
 
   if (!session || !user) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
@@ -520,6 +671,20 @@ export const InterviewRoom = () => {
               )}
             </button>
             <button
+              onClick={() => setActiveTab('video')}
+              className={cn(
+                "flex-1 px-3 py-3 text-xs font-medium border-b-2 transition-colors flex items-center justify-center gap-1",
+                activeTab === 'video'
+                  ? "border-primary text-primary bg-primary/5"
+                  : "border-transparent text-muted-foreground hover:bg-white/5"
+              )}
+            >
+              <Video className="w-4 h-4" /> Video
+              {videoStatus === 'connected' && (
+                <span className="ml-1 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              )}
+            </button>
+            <button
               onClick={() => setActiveTab('notes')}
               className={cn(
                 "flex-1 px-3 py-3 text-xs font-medium border-b-2 transition-colors flex items-center justify-center gap-1",
@@ -701,6 +866,17 @@ export const InterviewRoom = () => {
               </div>
             )}
 
+            {activeTab === 'video' && (
+              <VideoPanel
+                isInterviewer={isInterviewer}
+                remoteStream={remoteStream}
+                localStream={localStream}
+                connectionStatus={videoStatus}
+                onRequestVideo={handleRequestVideo}
+                onStopVideo={handleStopVideo}
+              />
+            )}
+
             {activeTab === 'notes' && (
               <div className="h-full">
                 <label className="text-sm font-medium text-muted-foreground block mb-2">
@@ -721,6 +897,14 @@ export const InterviewRoom = () => {
           </div>
         </div>
       </div>
+
+      {/* Video Consent Modal (for candidates) */}
+      <VideoConsentModal
+        isOpen={showConsentModal}
+        onAccept={handleAcceptVideo}
+        onReject={handleRejectVideo}
+        isLoading={isVideoLoading}
+      />
     </div>
   );
 };
