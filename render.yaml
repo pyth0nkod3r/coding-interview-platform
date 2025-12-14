@@ -8,7 +8,7 @@ services:
   - type: web
     name: interview-backend
     runtime: node
-    rootDirectory: backend
+    rootDir: backend
     plan: free
     buildCommand: npm ci && npm run build
     startCommand: npx prisma migrate deploy && npm start
@@ -25,7 +25,7 @@ services:
   - type: web
     name: interview-frontend
     runtime: static
-    rootDirectory: frontend
+    rootDir: frontend
     plan: free
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
