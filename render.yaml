@@ -5,11 +5,9 @@ databases:
 
 services:
   - type: web
-    name: interview-backend
-    runtime: node
-    rootDir: backend
-    buildCommand: npm ci && npm run build
-    startCommand: npx prisma migrate deploy && npm start
+    name: interview-platform
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -19,21 +17,5 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
-
-  - type: web
-    name: interview-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    staticPublishPath: dist
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=0, must-revalidate
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://interview-backend.onrender.com/api/*
-      - type: rewrite
-        source: /*
-        destination: /index.html
+      - key: PORT
+        value: "3001"
