@@ -2,14 +2,14 @@ databases:
   - name: interview-db
     databaseName: interview
     user: interview
-    plan: free # Optional: defaults to checking available plans or starter
+    plan: free
 
 services:
   - type: web
     name: interview-backend
     runtime: node
     rootDirectory: backend
-    plan: free # Optional
+    plan: free
     buildCommand: npm ci && npm run build
     startCommand: npx prisma migrate deploy && npm start
     envVars:
@@ -22,12 +22,17 @@ services:
       - key: JWT_SECRET
         generateValue: true
 
-  - type: static
+  - type: web
     name: interview-frontend
+    runtime: static
     rootDirectory: frontend
-    plan: free # Optional
+    plan: free
     buildCommand: npm ci && npm run build
-    publishDir: dist
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
     routes:
       - type: rewrite
         source: /api/*
