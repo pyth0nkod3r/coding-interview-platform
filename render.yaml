@@ -2,14 +2,12 @@ databases:
   - name: interview-db
     databaseName: interview
     user: interview
-    plan: free
 
 services:
   - type: web
     name: interview-backend
     runtime: node
     rootDir: backend
-    plan: free
     buildCommand: npm ci && npm run build
     startCommand: npx prisma migrate deploy && npm start
     envVars:
@@ -26,7 +24,6 @@ services:
     name: interview-frontend
     runtime: static
     rootDir: frontend
-    plan: free
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     headers:
