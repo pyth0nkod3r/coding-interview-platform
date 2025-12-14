@@ -42,8 +42,8 @@ RUN npm run build
 # Production Stage
 FROM node:20-alpine AS production
 
-# Install OpenSSL for Prisma and nginx
-RUN apk add --no-cache openssl nginx
+# Install OpenSSL for Prisma, nginx, and supervisor
+RUN apk add --no-cache openssl nginx supervisor
 
 WORKDIR /app
 
@@ -66,13 +66,19 @@ COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.unified.conf /etc/nginx/http.d/default.conf
 
+# Copy supervisor configuration
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
+# Create log directory for supervisor
+RUN mkdir -p /var/log
+
 # Expose port 80 (nginx)
 EXPOSE 80
 
-# Start both services
+# Start services via supervisor
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
