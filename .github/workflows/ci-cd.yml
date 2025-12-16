@@ -99,10 +99,27 @@ jobs:
 
     steps:
       - name: Trigger Render Deployment
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
           echo "🚀 Triggering Render deployment..."
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" \
-            --fail \
+
+          # Check if deploy hook is configured
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "❌ ERROR: RENDER_DEPLOY_HOOK secret is not set!"
+            echo "Please add the secret in GitHub Settings > Secrets > Actions"
+            exit 1
+          fi
+
+          # Trigger the deployment
+          HTTP_STATUS=$(curl -X POST "$RENDER_DEPLOY_HOOK" \
+            --write-out "%{http_code}" \
             --silent \
-            --show-error
-          echo "✅ Deployment triggered successfully!"
+            --output /dev/null)
+
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
+            echo "✅ Deployment triggered successfully! (HTTP $HTTP_STATUS)"
+          else
+            echo "❌ Failed to trigger deployment (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
