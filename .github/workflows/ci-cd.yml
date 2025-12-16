@@ -98,7 +98,11 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Trigger deployment
+      - name: Trigger Render Deployment
         run: |
-          echo "✅ All tests passed! Render will automatically deploy updates from the main branch."
-          echo "Configuration is managed via render.yaml Blueprint."
+          echo "🚀 Triggering Render deployment..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" \
+            --fail \
+            --silent \
+            --show-error
+          echo "✅ Deployment triggered successfully!"
