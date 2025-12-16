@@ -102,7 +102,7 @@ jobs:
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
-          echo "🚀 Triggering Render deployment..."
+          echo "🚀 Triggering Render deployment...."
 
           # Check if deploy hook is configured
           if [ -z "$RENDER_DEPLOY_HOOK" ]; then
